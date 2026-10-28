@@ -1,0 +1,3 @@
+# Optional tooling: test runner and Word document builder.
+pytest>=8.0
+python-docx>=1.1.0
