@@ -192,19 +192,6 @@ content (or a CRM/API) before any live call.
 4. Load client-approved documents for FAQ retrieval.
 5. Measure and tune response latency.
 
-## Adding this to GitHub
 
-Copy the files above into the root of your existing repository (or this folder if
-you plan to initialise one). Nothing in your existing repository was modified by
-this work, and the original plan document in Downloads was left untouched.
-
-```bash
-git status
-git add README.md .gitignore requirements.txt requirements-dev.txt \
-        src tests docs scripts WEEK1_DEVELOPMENT_DOCUMENT.docx
-git commit -m "Week 1: working customer support agent prototype with tests"
-```
-
-Keep `.env` files, tokens and phone numbers out of the repository; `.gitignore`
 already excludes common secret and environment files.
 
