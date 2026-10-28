@@ -1,0 +1,31 @@
+
+==============================================================
+  AI Customer Calling Agent - Week 1 local prototype
+  SIMULATED CALL: text only, no phone call is placed.
+  Type "exit" or "quit" to end the session.
+==============================================================
+
+--- Fixed demo conversation ---
+
+Customer: Hello
+Agent [greeting]: Hello, and thank you for calling Sample Store Support. I'm an AI assistant, and this call may be recorded. I can help with order status, business hours and common questions. How can I help you today?
+
+Customer: Where is my order ORD-1001?
+Agent [order_status]: Order ORD-1001 is marked as Shipped. It left the warehouse and is with the courier. Expected delivery: 30 October 2026. Tracking number: TRK-SAMPLE-1001. Is there anything else I can help you with?
+
+Customer: What are your business hours?
+Agent [business_hours]: Our support line is open Monday to Friday from 9 AM to 6 PM; Saturday from 10 AM to 2 PM; closed on Sunday (Asia/Karachi). Is there anything else I can help you with?
+
+Customer: How long does delivery take?
+Agent [faq]: Standard delivery takes 3 to 5 working days after dispatch. Orders placed before 2 PM are usually dispatched the same working day. Is there anything else I can help you with?
+
+Customer: Can you book me a flight to Dubai?
+Agent [fallback]: Sorry, I didn't quite understand that. I can help with order status, business hours, delivery and returns questions, or connect you to a human representative. Could you rephrase your question?
+
+Customer: I want to speak to a human representative
+Agent [handoff]: Of course. I'm connecting you to a human representative now. Our team is available Monday to Friday from 9 AM to 6 PM; Saturday from 10 AM to 2 PM; closed on Sunday (Asia/Karachi). A colleague will be with you shortly.
+[system] Escalation flag set: hand this call to a human representative.
+
+Customer: That's all, thank you
+Agent [goodbye]: You're welcome. Thank you for calling Sample Store Support. Goodbye!
+

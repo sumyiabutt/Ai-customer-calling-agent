@@ -1,0 +1,45 @@
+$ python -m unittest discover -s tests -t . -v
+
+test_hours_question_returns_schedule (tests.test_agent.BusinessHoursTests.test_hours_question_returns_schedule) ... ok
+test_hours_summary_is_grouped_for_speaking (tests.test_agent.BusinessHoursTests.test_hours_summary_is_grouped_for_speaking) ... ok
+test_sunday_is_reported_as_closed (tests.test_agent.BusinessHoursTests.test_sunday_is_reported_as_closed) ... ok
+test_delivery_time_faq (tests.test_agent.FaqTests.test_delivery_time_faq) ... ok
+test_prompt_injection_does_not_approve_refund (tests.test_agent.FaqTests.test_prompt_injection_does_not_approve_refund) ... ok
+test_return_policy_faq (tests.test_agent.FaqTests.test_return_policy_faq) ... ok
+test_greeting_discloses_ai_and_recording (tests.test_agent.GreetingTests.test_greeting_discloses_ai_and_recording) ... ok
+test_greeting_does_not_hijack_real_questions (tests.test_agent.GreetingTests.test_greeting_does_not_hijack_real_questions) ... ok
+test_greeting_returns_greeting_intent (tests.test_agent.GreetingTests.test_greeting_returns_greeting_intent) ... ok
+test_greeting_understands_mixed_language (tests.test_agent.GreetingTests.test_greeting_understands_mixed_language) ... ok
+test_goodbye_closes_the_call (tests.test_agent.HandoffAndFallbackTests.test_goodbye_closes_the_call) ... ok
+test_human_request_sets_escalation (tests.test_agent.HandoffAndFallbackTests.test_human_request_sets_escalation) ... ok
+test_human_request_wins_over_order_lookup (tests.test_agent.HandoffAndFallbackTests.test_human_request_wins_over_order_lookup) ... ok
+test_unknown_question_falls_back_without_transfer (tests.test_agent.HandoffAndFallbackTests.test_unknown_question_falls_back_without_transfer) ... ok
+test_empty_input_prompts_again (tests.test_agent.InputValidationTests.test_empty_input_prompts_again) ... ok
+test_extra_whitespace_and_case_are_normalised (tests.test_agent.InputValidationTests.test_extra_whitespace_and_case_are_normalised) ... ok
+test_non_string_input_raises_type_error (tests.test_agent.InputValidationTests.test_non_string_input_raises_type_error) ... ok
+test_bare_order_number_after_prompt (tests.test_agent.OrderStatusTests.test_bare_order_number_after_prompt) ... ok
+test_custom_order_store_is_used (tests.test_agent.OrderStatusTests.test_custom_order_store_is_used) ... ok
+test_every_sample_order_can_be_found (tests.test_agent.OrderStatusTests.test_every_sample_order_can_be_found) ... ok
+test_invalid_order_number_is_rejected (tests.test_agent.OrderStatusTests.test_invalid_order_number_is_rejected) ... ok
+test_known_order_returns_record_details (tests.test_agent.OrderStatusTests.test_known_order_returns_record_details) ... ok
+test_order_number_is_case_insensitive (tests.test_agent.OrderStatusTests.test_order_number_is_case_insensitive) ... ok
+test_order_without_number_asks_for_it (tests.test_agent.OrderStatusTests.test_order_without_number_asks_for_it) ... ok
+test_unknown_order_number_is_reported (tests.test_agent.OrderStatusTests.test_unknown_order_number_is_reported) ... ok
+test_only_handoff_escalates_by_default (tests.test_agent.ResponseContractTests.test_only_handoff_escalates_by_default) ... ok
+test_replies_are_always_non_empty (tests.test_agent.ResponseContractTests.test_replies_are_always_non_empty) ... ok
+
+----------------------------------------------------------------------
+Ran 27 tests in 0.003s
+
+OK
+
+$ python -m pytest -v
+
+tests/test_agent.py::InputValidationTests::test_extra_whitespace_and_case_are_normalised PASSED [ 88%]
+tests/test_agent.py::InputValidationTests::test_non_string_input_raises_type_error PASSED [ 92%]
+tests/test_agent.py::ResponseContractTests::test_only_handoff_escalates_by_default 
+tests/test_agent.py::ResponseContractTests::test_only_handoff_escalates_by_default PASSED [ 96%]
+tests/test_agent.py::ResponseContractTests::test_replies_are_always_non_empty 
+tests/test_agent.py::ResponseContractTests::test_replies_are_always_non_empty PASSED [100%]
+
+=================== 27 passed, 21 subtests passed in 0.12s ====================
