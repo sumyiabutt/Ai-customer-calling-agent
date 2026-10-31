@@ -1,11 +1,11 @@
-"""Week 1 prototype of the AI customer calling agent.
+"""Decision layer of the AI customer calling agent.
 
-This module is the decision layer of the calling agent, without audio. It
-takes the customer's words as text, works out the intent, and returns a reply
-plus an escalation flag. The Week 2 voice pipeline will wrap this same class
-with speech-to-text and text-to-speech.
+This module is the dialogue brain without audio. It takes the customer's words
+as text, works out the intent, and returns a reply plus an escalation flag.
+Week 2 wraps the same class with speech-to-text, a call session and
+text-to-speech (see ``src.session`` and ``src.voice``).
 
-Design rules for Week 1:
+Design rules:
 - Rule-based intent detection, so every decision is explainable and testable.
 - Answers come only from approved sample data in ``src.sample_data``.
 - Short, speakable sentences; no invented facts, prices or promises.
@@ -15,15 +15,11 @@ Design rules for Week 1:
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from .sample_data import (
-    BUSINESS_HOURS,
-    BUSINESS_NAME,
-    FAQ_ENTRIES,
-    SAMPLE_ORDERS,
-    TIME_ZONE,
-)
+from .knowledge_base import FaqEntry, KnowledgeBase
+from .sample_data import BUSINESS_HOURS, BUSINESS_NAME, SAMPLE_ORDERS, TIME_ZONE
 
 INTENT_GREETING = "greeting"
 INTENT_ORDER_STATUS = "order_status"
@@ -118,18 +114,23 @@ def normalize_text(text: str) -> str:
 
 
 def find_faq(
-    normalized_text: str, entries: list[dict] | None = None
-) -> dict | None:
-    """Return the FAQ entry with the most keyword hits, or None."""
-    entries = FAQ_ENTRIES if entries is None else entries
-    best_entry = None
-    best_score = 0
-    for entry in entries:
-        score = sum(1 for keyword in entry["keywords"] if keyword in normalized_text)
-        if score > best_score:
-            best_entry = entry
-            best_score = score
-    return best_entry
+    normalized_text: str,
+    entries: Sequence[Mapping[str, object] | FaqEntry] | None = None,
+) -> dict[str, object] | None:
+    """Return the best FAQ match as a plain dictionary, or None.
+
+    Kept as a small public helper for callers that only need a lookup; the
+    agent itself uses :class:`~src.knowledge_base.KnowledgeBase`.
+    """
+    entry = KnowledgeBase(entries).find(normalized_text)
+    if entry is None:
+        return None
+    return {
+        "id": entry.id,
+        "question": entry.question,
+        "answer": entry.answer,
+        "keywords": entry.keywords,
+    }
 
 
 def _format_time(value: str) -> str:
@@ -176,8 +177,17 @@ def summarize_business_hours(
 class CustomerSupportAgent:
     """Handles one customer-support call for order status and store FAQs."""
 
-    def __init__(self, orders: dict[str, dict] | None = None) -> None:
+    def __init__(
+        self,
+        orders: dict[str, dict] | None = None,
+        knowledge_base: KnowledgeBase | None = None,
+    ) -> None:
         self._orders = dict(SAMPLE_ORDERS if orders is None else orders)
+        self._knowledge = KnowledgeBase() if knowledge_base is None else knowledge_base
+
+    @property
+    def knowledge_base(self) -> KnowledgeBase:
+        return self._knowledge
 
     def handle_message(self, customer_message: str) -> AgentResponse:
         """Process one customer turn and return the agent's reply."""
@@ -193,7 +203,9 @@ class CustomerSupportAgent:
             return direct
 
         if HANDOFF_RE.search(normalized):
-            return AgentResponse(INTENT_HANDOFF, self._handoff_reply(), escalate=True)
+            return AgentResponse(
+                INTENT_HANDOFF, f"Of course. {self.handoff_reply()}", escalate=True
+            )
 
         if ORDER_HINT_RE.search(normalized):
             order_id = self._parse_order_id(normalized)
@@ -206,11 +218,11 @@ class CustomerSupportAgent:
         if HOURS_RE.search(normalized):
             return AgentResponse(INTENT_BUSINESS_HOURS, self._hours_reply())
 
-        faq_entry = find_faq(normalized)
+        faq_entry = self._knowledge.find(normalized)
         if faq_entry is not None:
             return AgentResponse(
                 INTENT_FAQ,
-                f"{faq_entry['answer']} Is there anything else I can help you with?",
+                f"{faq_entry.answer} Is there anything else I can help you with?",
             )
 
         if GREETING_RE.search(normalized) and len(normalized.split()) <= 8:
@@ -264,9 +276,10 @@ class CustomerSupportAgent:
             f"({TIME_ZONE}). Is there anything else I can help you with?"
         )
 
-    def _handoff_reply(self) -> str:
+    def handoff_reply(self) -> str:
+        """The transfer sentence, reused for requested and automatic handoffs."""
         return (
-            "Of course. I'm connecting you to a human representative now. "
+            "I'm connecting you to a human representative now. "
             f"Our team is available {summarize_business_hours()} ({TIME_ZONE}). "
             "A colleague will be with you shortly."
         )
