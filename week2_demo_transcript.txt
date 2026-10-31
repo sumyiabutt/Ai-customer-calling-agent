@@ -1,0 +1,42 @@
+
+================================================================
+  AI Customer Calling Agent - Week 2 simulated call
+  SIMULATED CALL: typed input, local speech output.
+  No phone line, no microphone and no recording are used.
+  Type "exit" or "quit" to end the session.
+================================================================
+
+Output mode: printed text (silent mode)
+
+--- Fixed demo conversation (simulated call) ---
+
+Customer: Hello
+[voice] Hello, and thank you for calling Sample Store Support. I'm an AI assistant, and this call may be recorded. I can help with order status, business hours and common questions. How can I help you today?
+[intent] greeting
+
+Customer: Where is my order ORD-1002?
+[voice] Order ORD-1002 is marked as Processing. Payment is confirmed and the order is being packed. Expected delivery: 2 November 2026. Is there anything else I can help you with?
+[intent] order_status
+
+Customer: How long does delivery take?
+[voice] Standard delivery takes 3 to 5 working days after dispatch. Orders placed before 2 PM are usually dispatched the same working day. Is there anything else I can help you with?
+[intent] faq
+
+Customer: Can you cancel my subscription?
+[voice] Sorry, I didn't quite understand that. I can help with order status, business hours, delivery and returns questions, or connect you to a human representative. Could you rephrase your question?
+[intent] fallback
+
+Customer: What is the weather in Karachi?
+[voice] Sorry, I didn't quite understand that. I can help with order status, business hours, delivery and returns questions, or connect you to a human representative. Could you rephrase your question?
+[intent] fallback
+
+Customer: Do you also sell laptops?
+[voice] I'm sorry, I'm still having trouble understanding you. I'm connecting you to a human representative now. Our team is available Monday to Friday from 9 AM to 6 PM; Saturday from 10 AM to 2 PM; closed on Sunday (Asia/Karachi). A colleague will be with you shortly.
+[intent] handoff
+[system] Escalation flag set: hand this call to a human representative.
+
+Customer: Okay, that's all. Thank you
+[voice] You're welcome. Thank you for calling Sample Store Support. Goodbye!
+[intent] goodbye
+
+[system] Call summary: 7 customer turn(s); topics: greeting, order status, faq, fallback, handoff, goodbye; outcome: transferred to a human representative.
