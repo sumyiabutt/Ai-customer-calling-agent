@@ -1,4 +1,4 @@
-# AI Customer Calling Agent — Weeks 1–2
+# AI Customer Calling Agent — Weeks 1–3
 
 A working prototype of the customer-support calling agent described in
 `AI_Customer_Calling_Agent_Development_Plan.docx`. Week 1 delivers the decision
@@ -6,11 +6,15 @@ layer of the agent: it understands the customer's request, looks up approved
 sample data, replies in short speakable sentences, and flags calls that need a
 human representative. Week 2 adds a call session with automatic escalation and
 a local voice loop: typed words go in, and the reply is spoken through the
-Windows voice (or printed when no voice is available).
+Windows voice (or printed when no voice is available). Week 3 connects a local
+SQLite CRM and call log, saves every finished simulated call, and serves a
+password-protected local dashboard with call logs, transcripts and analytics.
 
 **This is not a live phone agent yet.** No phone line, microphone or
 speech-recognition engine is connected. The "customer" text is typed or supplied
-by the demo script; it is not a transcript of real audio.
+by the demo script; it is not a transcript of real audio. The CRM holds
+fictional sample customers, and the dashboard shows the text transcript only —
+there are no call recordings.
 
 ---
 
@@ -64,6 +68,7 @@ listed above.
 | Spoken replies | Done locally — Windows SAPI via PowerShell (2 voices detected on this machine); no API key needed |
 | Streaming speech-to-text / microphone input | **Not done** — no STT account or credentials |
 | Telephony test call, barge-in, latency measurement | **Not done** — no phone number, telephony account or audio stream |
+| Week 2 Word report | Done — `WEEK2_DEVELOPMENT_DOCUMENT.docx` (same theme as Week 1) |
 | Tests and README updated for Week 2 | Done — 65 tests, 0 failures |
 
 What "spoken replies" means here: the agent's approved text is read aloud by the
@@ -71,6 +76,32 @@ laptop's built-in Windows voice. It is not a telephony voice, and nothing is
 recorded or uploaded. If the Windows voice is unavailable, the same text is
 printed instead. No audio was played automatically during development; run the
 demo yourself to hear it.
+
+---
+
+## Week 3 status
+
+Week 3 in the plan is about connecting a business system and giving the team a
+way to see what the agent did. No client CRM, API credentials or telephony
+account exist in this environment, so the integration is a local SQLite
+stand-in with fictional records. The dashboard and the logging are real and
+working; the customer data is not.
+
+| Week 3 item | Status |
+| --- | --- |
+| Local CRM: customers, orders and interactions in SQLite | Done — `src/crm.py`, fictional seed data, 10 tests |
+| Call log with transcript, outcome and caller link | Done — `src/call_store.py`, 10 tests |
+| Analytics: call counts, escalation rate, average turns, intents, calls per day | Done — used by the dashboard overview |
+| Demo saves each finished call to the CRM and call log | Done — `python -m src.voice.demo` prints `Call #N saved locally` |
+| Admin dashboard: login, overview, call list with filters, transcript detail | Done — `src/dashboard/`, 19 tests |
+| Dashboard security | Local-only: loopback binding, password login, HttpOnly + SameSite=Strict session cookie, escaped HTML, 4 KB request limit |
+| Call recordings / audio playback | **Not done** — no telephony or audio capture is connected; the dashboard says so explicitly |
+| Real CRM or client API integration | **Not done** — needs client API access; the local schema is a stand-in |
+| Week 3 Word report | Not requested yet |
+| Tests and README updated for Week 3 | Done — 104 tests, 0 failures |
+
+The database files live in `data/` and are ignored by git. Delete them to start
+fresh; they are recreated (customers and orders are reseeded, calls are not).
 
 ---
 
@@ -88,6 +119,7 @@ demo yourself to hear it.
 .
 ├── README.md
 ├── WEEK1_DEVELOPMENT_DOCUMENT.docx   # generated Week 1 report (black / dark-blue theme)
+├── WEEK2_DEVELOPMENT_DOCUMENT.docx   # generated Week 2 report (same theme)
 ├── requirements.txt                  # runtime: standard library only
 ├── requirements-dev.txt              # pytest + python-docx
 ├── .gitignore
@@ -96,28 +128,45 @@ demo yourself to hear it.
 │   ├── agent.py                      # intents, validation, replies, escalation
 │   ├── knowledge_base.py             # Week 2: validated FAQ entries + lookup
 │   ├── session.py                    # Week 2: call state, 3-strike escalation, summary
+│   ├── crm.py                        # Week 3: local SQLite CRM (fictional data)
+│   ├── call_store.py                 # Week 3: call log, transcripts, analytics
 │   ├── cli.py                        # Week 1: simulated text call in the terminal
 │   ├── sample_data.py                # clearly fictional orders, hours and FAQs
+│   ├── dashboard/                    # Week 3: local admin dashboard
+│   │   ├── __init__.py
+│   │   ├── __main__.py               # python -m src.dashboard
+│   │   ├── app.py                    # routing, login, session cookie, HTTP server
+│   │   └── views.py                  # HTML pages and inline stylesheet
 │   └── voice/                        # Week 2: voice loop
 │       ├── __init__.py
 │       ├── pipeline.py               # STT -> session -> TTS, pluggable protocols
 │       ├── stt.py                    # typed-input STT stand-in (no microphone)
 │       ├── tts.py                    # Windows SAPI voice + printed fallback
-│       └── demo.py                   # simulated call: typed in, spoken out
+│       └── demo.py                   # simulated call; saves finished calls
+├── data/                             # local SQLite files, ignored by git (created on first run)
 ├── tests/
 │   ├── __init__.py
 │   ├── test_agent.py                 # 27 Week 1 tests
 │   ├── test_knowledge_base.py        # 14 Week 2 tests
 │   ├── test_session.py               # 12 Week 2 tests
-│   └── test_voice_pipeline.py        # 12 Week 2 tests
+│   ├── test_voice_pipeline.py        # 12 Week 2 tests
+│   ├── test_crm.py                   # 10 Week 3 tests
+│   ├── test_call_store.py            # 10 Week 3 tests
+│   └── test_dashboard.py             # 19 Week 3 tests
 ├── docs/
 │   ├── WEEK1_DEVELOPMENT_DOCUMENT.md # source of the Week 1 Word document
+│   ├── WEEK2_DEVELOPMENT_DOCUMENT.md # source of the Week 2 Word document
 │   ├── test_results.txt              # real Week 1 test output
 │   ├── week2_test_results.txt        # real Week 2 test output (65 tests)
+│   ├── week3_test_results.txt        # real Week 3 test output (104 tests)
 │   ├── demo_transcript.txt           # real Week 1 demo output
-│   └── week2_demo_transcript.txt     # real Week 2 demo output
+│   ├── week2_demo_transcript.txt     # real Week 2 demo output
+│   ├── week3_demo_transcript.txt     # real Week 3 demo output (call saved to SQLite)
+│   └── week3_dashboard_check.txt     # real dashboard HTTP check output (19/19)
 └── scripts/
-    └── build_week1_document.py       # regenerates the Week 1 .docx from the .md
+    ├── build_week1_document.py       # shared theme builder; regenerates the Week 1 .docx
+    ├── build_week2_document.py       # regenerates the Week 2 .docx
+    └── check_week3_dashboard.py      # starts a loopback dashboard and verifies every page
 ```
 
 ## Setup
@@ -168,7 +217,59 @@ conversation deliberately includes three unknown requests in a row, so you can
 see the agent escalate to a human by itself. The real captured output is in
 `docs/week2_demo_transcript.txt`.
 
+Since Week 3, a finished simulated call is also written to the local CRM and
+call log. Add `--caller` to choose which fictional customer is calling:
+
+```bash
+python -m src.voice.demo --silent --caller 0300-0000002
+```
+
+The default caller is `0300-0000001` (Sample Customer A). The console ends with
+`[system] Call #N saved locally (...)` and the dashboard can then show the call.
+The captured Week 3 run is in `docs/week3_demo_transcript.txt`.
+
 No audio is recorded, no phone number is dialled and no data leaves the machine.
+
+### Week 3: local admin dashboard
+
+```bash
+# Windows PowerShell: choose a password for this session
+$env:DASHBOARD_PASSWORD = "change-me"
+python -m src.dashboard
+
+# Git Bash / macOS / Linux
+DASHBOARD_PASSWORD="change-me" python -m src.dashboard
+```
+
+Open <http://127.0.0.1:8080/>, sign in as `admin` with that password, and the
+dashboard shows:
+
+- **Overview** — total calls, calls transferred to a human, escalation rate and
+  average turns, plus recent calls, outcomes, intent counts and calls per day.
+- **Calls** — every saved call, newest first, filterable by outcome.
+- **Call detail** — caller, linked customer, outcome, handoff summary and the
+  full text transcript. The page states that recordings are not available.
+
+If `DASHBOARD_PASSWORD` is not set, a random one-time password is printed in the
+terminal. Use `--port` to change the port and `--host` only if you understand
+the warning the server prints.
+
+This is a local demonstration tool, not production authentication: no TLS, no
+user database, no multi-user permissions, and the login session lives in memory
+so restarting the server signs everyone out. Bind it to `127.0.0.1` and use it
+with fictional data only. Run `python -m scripts.check_week3_dashboard` to start
+a temporary dashboard and verify login, pages, filters, escaping and logout over
+real HTTP (captured output: `docs/week3_dashboard_check.txt`).
+
+### Rebuild the Week 2 report
+
+```bash
+pip install -r requirements-dev.txt
+python scripts/build_week2_document.py
+```
+
+The Markdown in `docs/WEEK2_DEVELOPMENT_DOCUMENT.md` is the editable source; the
+script applies the same black and dark-blue theme as the Week 1 report.
 
 ## Run the tests
 
@@ -182,17 +283,18 @@ or, if pytest is installed:
 python -m pytest -q
 ```
 
-Expected result (31 October 2026, Python 3.12.10):
+Expected result (2 November 2026, Python 3.12.10):
 
 ```text
-Ran 65 tests in 0.012s
+Ran 104 tests in 5.1s
 
 OK
 ```
 
-That is the 27 Week 1 tests plus 38 Week 2 tests (knowledge base, session,
-voice pipeline). Actual captured output: `docs/week2_test_results.txt`; the
-Week 1 run is kept in `docs/test_results.txt`.
+That is the 27 Week 1 tests, 38 Week 2 tests (knowledge base, session, voice
+pipeline) and 39 Week 3 tests (CRM, call store, dashboard), including the
+HTTP-level dashboard checks. Actual captured output: `docs/week3_test_results.txt`;
+earlier runs are kept in `docs/week2_test_results.txt` and `docs/test_results.txt`.
 
 ## Supported intents
 
@@ -246,12 +348,34 @@ flowchart LR
 `VoicePipeline.handle_audio()` runs speech in, session, speech out. Week 1's
 `src.cli` still uses the agent directly.
 
+Week 3 closes the loop after the call:
+
+```mermaid
+flowchart LR
+    A[ConversationSession] --> B[outcome: transferred / closed / open]
+    A --> C[CallStore.save_session]
+    B --> C
+    C --> D[(data/calls.sqlite3)]
+    C --> E[CustomerRepository.save_interaction]
+    E --> F[(data/crm.sqlite3)]
+    D --> G[DashboardApp]
+    G --> H[Overview / Calls / Transcript]
+```
+
+The caller number is matched to a fictional customer with `normalize_phone`,
+so `0300-0000001`, `0300 0000001`, `03000000001` and `+92 300 0000001` all find
+Sample Customer A. The dashboard reads only from the call store; it never writes
+customer data.
+
 ## Sample data warning
 
 Everything in `src/sample_data.py` is fictional: orders `ORD-1001` to `ORD-1005`,
-the "Sample Store Support" name, the 9 AM–6 PM hours and every FAQ answer. None
-of it describes a real company or real customer. Replace it with client-approved
-content (or a CRM/API) before any live call.
+the "Sample Store Support" name, the 9 AM–6 PM hours and every FAQ answer. The
+Week 3 CRM seed (`src/crm.py`) is also fictional: `Sample Customer A` to
+`Sample Customer E`, phone numbers `0300-0000001` to `0300-0000005`, and
+`@example.test` email addresses. None of it describes a real company or real
+customer. Replace it with client-approved content (or a CRM/API) before any live
+call.
 
 ## Limitations
 
@@ -261,18 +385,27 @@ content (or a CRM/API) before any live call.
   (customer interrupting the agent) needs a real audio stream and is not done.
 - Response latency has not been measured against the 1.5-second target.
 - Rule-based keyword matching, so unusual phrasing can fall back.
-- No database writes, authentication, call recordings or PII handling yet.
+- The CRM and call log are local SQLite stand-ins with fictional data; no client
+  CRM/API is connected and no PII handling or retention policy is implemented.
+- The dashboard is a local demo: single hard-coded username, password from an
+  environment variable, in-memory session, no TLS, no user management. Do not
+  expose it to a network or point it at real customer data.
+- There are no call recordings and no audio playback because there is no
+  telephony or audio capture.
 - English and a few greeting words only; full Urdu/English support is later.
 
-## Next steps (Week 3)
+## Next steps (Week 4)
 
-1. Connect the CRM or customer database: read customer data, save call outcomes.
-2. Connect a telephony provider and test number, then place the first real test
+1. Connect a telephony provider and test number, then place the first real test
    call — still blocked until the access in the table above is provided.
-3. Replace typed input with streaming speech-to-text and the Windows voice with
+2. Replace typed input with streaming speech-to-text and the Windows voice with
    a telephony voice; handle barge-in and measure end-to-end latency.
-4. Build the admin dashboard: call logs, transcripts and basic analytics.
-5. Keep the knowledge base and escalation rules in sync with client approval.
+3. Replace the local SQLite CRM with the client's approved CRM/API, keeping the
+   same repository methods so callers do not change.
+4. Run a small supervised pilot, review transcripts in the dashboard, and tune
+   the rules and knowledge base from real (consented) conversations.
+5. Add proper authentication, HTTPS and retention rules before the dashboard
+   leaves localhost.
 
 ## Adding this to GitHub
 
@@ -295,12 +428,28 @@ Week 2 commit (after the Week 1 files are in the repository):
 git status
 git add src/knowledge_base.py src/session.py src/voice \
         tests/test_knowledge_base.py tests/test_session.py tests/test_voice_pipeline.py \
-        docs/week2_test_results.txt docs/week2_demo_transcript.txt README.md
+        docs/WEEK2_DEVELOPMENT_DOCUMENT.md docs/week2_test_results.txt \
+        docs/week2_demo_transcript.txt scripts/build_week1_document.py \
+        scripts/build_week2_document.py WEEK2_DEVELOPMENT_DOCUMENT.docx README.md
 git commit -m "Week 2: call session, knowledge base and local voice loop"
 ```
 
-If the Week 1 commit already included the whole `src`, `tests` and `docs`
-folders, use `git status` to confirm exactly which paths changed before adding.
+Week 3 commit (after Week 2):
+
+```bash
+git status
+git add src/crm.py src/call_store.py src/dashboard src/session.py src/voice/demo.py \
+        tests/test_crm.py tests/test_call_store.py tests/test_dashboard.py \
+        scripts/check_week3_dashboard.py .gitignore README.md \
+        docs/week3_test_results.txt docs/week3_demo_transcript.txt \
+        docs/week3_dashboard_check.txt
+git commit -m "Week 3: local CRM, call log and admin dashboard"
+```
+
+`data/` is ignored on purpose: the SQLite files are rebuilt on the next run and
+must never carry customer data into the repository. If the Week 1 or Week 2
+commit already included whole folders, use `git status` to confirm exactly which
+paths changed before adding.
 
 Keep `.env` files, tokens and phone numbers out of the repository; `.gitignore`
 already excludes common secret and environment files.
