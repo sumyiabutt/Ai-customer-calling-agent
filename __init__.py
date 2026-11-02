@@ -1,13 +1,5 @@
-"""Week 1 prototype of the AI Customer Calling Agent.
+"""Week 3 local admin dashboard."""
 
-Run the simulated call from the project root:
+from .app import DashboardApp, build_server
 
-    python -m src.cli          # interactive chat
-    python -m src.cli --demo   # fixed sample conversation
-
-No audio is recorded, no phone call is placed and no data leaves this machine.
-"""
-
-from .agent import AgentResponse, CustomerSupportAgent
-
-__all__ = ["AgentResponse", "CustomerSupportAgent"]
+__all__ = ["DashboardApp", "build_server"]
