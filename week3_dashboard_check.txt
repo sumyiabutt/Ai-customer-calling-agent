@@ -1,0 +1,22 @@
+PASS  unauthenticated / redirects to /login
+PASS  login page renders
+PASS  wrong password returns 401
+PASS  correct password sets a session cookie
+PASS  cookie is HttpOnly and SameSite=Strict
+PASS  overview renders
+PASS  overview counts both saved calls
+PASS  overview shows a 50% escalation rate
+PASS  call list renders rows
+PASS  outcome filter shows only transferred calls
+PASS  invalid filter is ignored and not echoed
+PASS  call detail says recordings are unavailable
+PASS  stored customer message is HTML-escaped
+PASS  transcript lists intents for a saved call
+PASS  unknown call returns 404
+PASS  unknown page returns 404
+PASS  logout redirects
+PASS  old cookie no longer grants access
+PASS  oversized request body is rejected
+
+19/19 checks passed
+Note: this verified the HTTP responses only; no browser was opened and no real customer data was used.

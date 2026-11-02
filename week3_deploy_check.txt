@@ -1,0 +1,29 @@
+Week 3 static web demo - deployment and checks
+Date: 2 November 2026
+
+Site: https://calling-agent-admin-i4vnn3ckt63.qoder.website/
+Type: static publication of the Week 3 admin dashboard (web/)
+Data: fictional sample calls; call #1 transcript captured from the real demo run
+Access: private (Qoder sign-in required)
+
+Local validation
+----------------
+Static server: python -m http.server 8090 --bind 127.0.0.1 --directory web
+/            200 (4,562 bytes)
+/styles.css  200 (12,416 bytes)
+/app.js      200 (25,748 bytes)
+JavaScript syntax check with bundled Node: passed
+
+Data and rendering checks (13/13 passed)
+----------------------------------------
+Total calls 12, transferred 4, escalation rate 33.3%, total turns 49, average 4.1
+Outcomes: transferred 4, closed 7, open 1
+Seven-day window: 27 Oct to 2 Nov 2026, counts 0,1,1,2,2,3,3
+Newest-first ordering, overview render, 12 call rows, recording note, transcript rows
+
+Limits
+------
+- No browser was opened and no screenshot was taken; verification was HTTP and logic level.
+- Published site is private; an unauthenticated request returns 401 (Qoder login required).
+- The sign-in on the page is a client-side demo gate, not production authentication.
+- No backend, CRM API, telephony or audio is connected to the static site.
