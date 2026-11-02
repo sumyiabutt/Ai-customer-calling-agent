@@ -97,7 +97,8 @@ working; the customer data is not.
 | Dashboard security | Local-only: loopback binding, password login, HttpOnly + SameSite=Strict session cookie, escaped HTML, 4 KB request limit |
 | Call recordings / audio playback | **Not done** — no telephony or audio capture is connected; the dashboard says so explicitly |
 | Real CRM or client API integration | **Not done** — needs client API access; the local schema is a stand-in |
-| Week 3 Word report | Not requested yet |
+| Week 3 Word report | Done — `WEEK3_DEVELOPMENT_DOCUMENT.docx` (same theme as Weeks 1 and 2) |
+| Hosted static demo of the dashboard | Done — private Qoder Site, `web/`, fictional data, client-side demo gate |
 | Tests and README updated for Week 3 | Done — 104 tests, 0 failures |
 
 The database files live in `data/` and are ignored by git. Delete them to start
@@ -120,6 +121,7 @@ fresh; they are recreated (customers and orders are reseeded, calls are not).
 ├── README.md
 ├── WEEK1_DEVELOPMENT_DOCUMENT.docx   # generated Week 1 report (black / dark-blue theme)
 ├── WEEK2_DEVELOPMENT_DOCUMENT.docx   # generated Week 2 report (same theme)
+├── WEEK3_DEVELOPMENT_DOCUMENT.docx   # generated Week 3 report (same theme)
 ├── requirements.txt                  # runtime: standard library only
 ├── requirements-dev.txt              # pytest + python-docx
 ├── .gitignore
@@ -144,6 +146,10 @@ fresh; they are recreated (customers and orders are reseeded, calls are not).
 │       ├── tts.py                    # Windows SAPI voice + printed fallback
 │       └── demo.py                   # simulated call; saves finished calls
 ├── data/                             # local SQLite files, ignored by git (created on first run)
+├── web/                              # Week 3 static dashboard demo (Qoder Sites publication)
+│   ├── index.html
+│   ├── styles.css
+│   └── app.js                        # sample data, routing, views, demo gate
 ├── tests/
 │   ├── __init__.py
 │   ├── test_agent.py                 # 27 Week 1 tests
@@ -156,16 +162,19 @@ fresh; they are recreated (customers and orders are reseeded, calls are not).
 ├── docs/
 │   ├── WEEK1_DEVELOPMENT_DOCUMENT.md # source of the Week 1 Word document
 │   ├── WEEK2_DEVELOPMENT_DOCUMENT.md # source of the Week 2 Word document
+│   ├── WEEK3_DEVELOPMENT_DOCUMENT.md # source of the Week 3 Word document
 │   ├── test_results.txt              # real Week 1 test output
 │   ├── week2_test_results.txt        # real Week 2 test output (65 tests)
 │   ├── week3_test_results.txt        # real Week 3 test output (104 tests)
 │   ├── demo_transcript.txt           # real Week 1 demo output
 │   ├── week2_demo_transcript.txt     # real Week 2 demo output
 │   ├── week3_demo_transcript.txt     # real Week 3 demo output (call saved to SQLite)
-│   └── week3_dashboard_check.txt     # real dashboard HTTP check output (19/19)
+│   ├── week3_dashboard_check.txt     # real dashboard HTTP check output (19/19)
+│   └── week3_deploy_check.txt        # static site local checks and published address
 └── scripts/
     ├── build_week1_document.py       # shared theme builder; regenerates the Week 1 .docx
     ├── build_week2_document.py       # regenerates the Week 2 .docx
+    ├── build_week3_document.py       # regenerates the Week 3 .docx
     └── check_week3_dashboard.py      # starts a loopback dashboard and verifies every page
 ```
 
@@ -261,6 +270,41 @@ with fictional data only. Run `python -m scripts.check_week3_dashboard` to start
 a temporary dashboard and verify login, pages, filters, escaping and logout over
 real HTTP (captured output: `docs/week3_dashboard_check.txt`).
 
+### Hosted dashboard demo (Qoder Sites)
+
+`web/` is a static, read-only publication of the same dashboard views for
+sharing screenshots or a quick demo:
+
+```bash
+python -m http.server 8090 --bind 127.0.0.1 --directory web
+# open http://127.0.0.1:8090/  (demo passcode: week3-demo)
+```
+
+Published copy: <https://calling-agent-admin-i4vnn3ckt63.qoder.website/>. The
+site is a Qoder Sites deployment (not Vercel) and contains fictional sample
+calls; call #1 is the captured Week 3 demo transcript. The sign-in on the static
+page is a client-side demo gate, not real authentication, and the site has no
+backend, CRM API, telephony or audio. Local checks are recorded in
+`docs/week3_deploy_check.txt`.
+
+The published copy is set to **public**: the URL opens in any browser, and the
+demo passcode is filled in on the sign-in form.
+
+### Deploy the static demo on Vercel
+
+`web/` is plain static output, so it can also be hosted on Vercel under your own
+account. Nothing in this repo performs that deployment, and the Python
+dashboard, SQLite call log and CRM do **not** run on Vercel.
+
+```bash
+cd web
+npx vercel --prod
+```
+
+Or drag the `web` folder onto <https://vercel.com/new>. The root `vercel.json`
+serves `web/` when the whole repository is connected instead. Either way the
+demo passcode stays `week3-demo`.
+
 ### Rebuild the Week 2 report
 
 ```bash
@@ -270,6 +314,16 @@ python scripts/build_week2_document.py
 
 The Markdown in `docs/WEEK2_DEVELOPMENT_DOCUMENT.md` is the editable source; the
 script applies the same black and dark-blue theme as the Week 1 report.
+
+### Rebuild the Week 3 report
+
+```bash
+pip install -r requirements-dev.txt
+python scripts/build_week3_document.py
+```
+
+Source: `docs/WEEK3_DEVELOPMENT_DOCUMENT.md`. Output:
+`WEEK3_DEVELOPMENT_DOCUMENT.docx` (30 tables, same theme).
 
 ## Run the tests
 
@@ -440,9 +494,10 @@ Week 3 commit (after Week 2):
 git status
 git add src/crm.py src/call_store.py src/dashboard src/session.py src/voice/demo.py \
         tests/test_crm.py tests/test_call_store.py tests/test_dashboard.py \
-        scripts/check_week3_dashboard.py .gitignore README.md \
-        docs/week3_test_results.txt docs/week3_demo_transcript.txt \
-        docs/week3_dashboard_check.txt
+        scripts/check_week3_dashboard.py scripts/build_week3_document.py .gitignore README.md \
+        web docs/WEEK3_DEVELOPMENT_DOCUMENT.md docs/week3_test_results.txt \
+        docs/week3_demo_transcript.txt docs/week3_dashboard_check.txt \
+        docs/week3_deploy_check.txt WEEK3_DEVELOPMENT_DOCUMENT.docx
 git commit -m "Week 3: local CRM, call log and admin dashboard"
 ```
 
@@ -453,4 +508,5 @@ paths changed before adding.
 
 Keep `.env` files, tokens and phone numbers out of the repository; `.gitignore`
 already excludes common secret and environment files.
+
 
