@@ -16,17 +16,34 @@ by the demo script; it is not a transcript of real audio. The CRM holds
 fictional sample customers, and the dashboard shows the text transcript only —
 there are no call recordings.
 
-## Live demo
+Weeks 1–3 of the four-week plan are delivered and tested (104 automated tests).
+Week 4 — telephony, pilot and handover — is listed under next steps, because it
+depends on accounts and access this environment does not have.
 
-<https://ai-customer-calling-agent.vercel.app/> — a read-only hosted copy of the
-demo. Demo login: `admin` / `week3-demo` (the password is already filled in on
-the sign-in form).
+## Live project website
 
-The site covers the Weeks 1–3 build: an Overview with the Week 3 call log and
-analytics, a Calls list with full transcripts, and a Journey tab that explains
-what each project week delivered, how it was tested, and what is still blocked.
-The data is fictional sample calls, and no telephony, CRM API or audio is
-connected.
+<https://ai-customer-calling-agent.vercel.app/> — a public, read-only copy of
+the project website. No sign-in is required.
+
+The site presents the whole Weeks 1–3 build across seven views (labelled
+Stage 1–3 on the site):
+
+- **Home** — what the agent does, how a call flows, and what works versus what
+  still needs external access.
+- **Dashboard** — total calls, escalation rate, average turns, outcomes, intents
+  and calls per day, calculated from the sample call log.
+- **Call log** and **call detail** — 12 sample calls with outcomes, customer
+  links and full text transcripts.
+- **Journey** — what each stage delivered, how it was tested, the access still
+  missing and the next steps.
+- **How it works** — the eight intents, escalation and handoff logic, the data
+  model and the dashboard's security measures.
+- **Testing** — seven suites, 104 tests, captured evidence and the three weekly
+  reports as DOCX downloads.
+
+All customer names, orders and calls are fictional sample data; call #1
+reproduces the captured Week 3 demo run. The hosted site has no backend,
+telephony, CRM API or audio.
 
 ---
 
@@ -109,8 +126,9 @@ working; the customer data is not.
 | Dashboard security | Local-only: loopback binding, password login, HttpOnly + SameSite=Strict session cookie, escaped HTML, 4 KB request limit |
 | Call recordings / audio playback | **Not done** — no telephony or audio capture is connected; the dashboard says so explicitly |
 | Real CRM or client API integration | **Not done** — needs client API access; the local schema is a stand-in |
+| Outbound calling campaigns, calendar booking and identity verification | **Not done** — the delivered MVP is inbound-only; these plan items need telephony, client systems and approved policy |
 | Week 3 Word report | Done — `WEEK3_DEVELOPMENT_DOCUMENT.docx` (same theme as Weeks 1 and 2) |
-| Hosted static demo of the dashboard | Done — `web/`, deployed on Vercel, fictional data, client-side demo gate |
+| Hosted project website | Done — `web/`, public on Vercel, seven views, no sign-in, fictional data |
 | Tests and README updated for Week 3 | Done — 104 tests, 0 failures |
 
 The database files live in `data/` and are ignored by git. Delete them to start
@@ -158,10 +176,13 @@ fresh; they are recreated (customers and orders are reseeded, calls are not).
 │       ├── tts.py                    # Windows SAPI voice + printed fallback
 │       └── demo.py                   # simulated call; saves finished calls
 ├── data/                             # local SQLite files, ignored by git (created on first run)
-├── web/                              # Week 3 static dashboard demo (deployed on Vercel)
+├── web/                              # public static project website (deployed on Vercel)
 │   ├── index.html
 │   ├── styles.css
-│   └── app.js                        # sample data, routing, views, demo gate
+│   ├── app.js                        # sample data, routing and every view
+│   ├── WEEK1_DEVELOPMENT_DOCUMENT.docx
+│   ├── WEEK2_DEVELOPMENT_DOCUMENT.docx
+│   └── WEEK3_DEVELOPMENT_DOCUMENT.docx
 ├── tests/
 │   ├── __init__.py
 │   ├── test_agent.py                 # 27 Week 1 tests
@@ -282,26 +303,25 @@ with fictional data only. Run `python -m scripts.check_week3_dashboard` to start
 a temporary dashboard and verify login, pages, filters, escaping and logout over
 real HTTP (captured output: `docs/week3_dashboard_check.txt`).
 
-### Hosted dashboard demo
+### Hosted project website
 
-`web/` is a static, read-only publication of the same dashboard views for
-sharing screenshots or a quick demo:
+`web/` is the public, read-only website for the whole build. It is plain HTML,
+CSS and JavaScript with no build step and no backend:
 
 ```bash
 python -m http.server 8090 --bind 127.0.0.1 --directory web
-# open http://127.0.0.1:8090/  (demo passcode: week3-demo)
+# open http://127.0.0.1:8090/
 ```
 
-Published copy: <https://ai-customer-calling-agent.vercel.app/>. The site
-contains fictional sample calls; call #1 is the captured Week 3 demo transcript.
-The sign-in is a client-side demo gate, not real authentication, and the site
-has no backend, CRM API, telephony or audio. Local checks are recorded in
+Published copy: <https://ai-customer-calling-agent.vercel.app/>. It serves the
+files in `web/`, so re-upload them after any change. The site has seven views:
+Home, Dashboard, Call log, call detail, Journey, How it works and Testing. It
+needs no sign-in. All records are fictional sample data; call #1 is the captured
+Week 3 demo transcript. There is no telephony, CRM API or audio, and analytics
+are calculated in the browser from `web/app.js`. Local checks are recorded in
 `docs/week3_deploy_check.txt`.
 
-The published copy is public: the URL opens in any browser, and the demo
-passcode is filled in on the sign-in form.
-
-### Deploy the static demo on Vercel
+### Deploy the website on Vercel
 
 `vercel.json` at the repository root turns off framework auto-detection so the
 static files are served as-is. Connect the repository at
@@ -313,7 +333,7 @@ npx vercel --prod
 ```
 
 The Python dashboard, SQLite call log and CRM do **not** run on Vercel — only
-the static demo does. Either way the demo passcode stays `week3-demo`.
+the static website does.
 
 ### Rebuild the Week 2 report
 
@@ -518,5 +538,4 @@ paths changed before adding.
 
 Keep `.env` files, tokens and phone numbers out of the repository; `.gitignore`
 already excludes common secret and environment files.
-
 
