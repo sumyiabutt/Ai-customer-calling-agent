@@ -1,77 +1,20 @@
-# AI Customer Calling Agent
+# AI Customer Calling Agent — Weeks 1–3
 
-**Internship project, Weeks 1–3.** A customer-support calling agent that
-understands a request, checks approved business data, answers in short
-speakable sentences, and transfers the caller to a human when it should.
-
-**Status:** Weeks 1–3 delivered · 104 automated tests passing · live phone call
-not yet connected (details below).
-
-**Live demo:** <https://ai-customer-calling-agent.vercel.app/> — login `admin` /
-`week3-demo`.
-
-## Contents
-
-- [Overview](#overview)
-- [What works today](#what-works-today)
-- [Live demo](#live-demo)
-- [Quick start](#quick-start)
-- [Week 1 status](#week-1-status)
-- [Week 2 status](#week-2-status)
-- [Week 3 status](#week-3-status)
-- [Requirements](#requirements)
-- [Project structure](#project-structure)
-- [Tech stack](#tech-stack)
-- [Setup](#setup)
-- [Run the simulated call](#run-the-simulated-call)
-- [Hosted dashboard demo](#hosted-dashboard-demo)
-- [Deploy the static demo on Vercel](#deploy-the-static-demo-on-vercel)
-- [Rebuild the reports](#rebuild-the-reports)
-- [Run the tests](#run-the-tests)
-- [Supported intents](#supported-intents)
-- [How it works](#how-it-works)
-- [Sample data warning](#sample-data-warning)
-- [Limitations](#limitations)
-- [Next steps (Week 4)](#next-steps-week-4)
-- [Adding this to GitHub](#adding-this-to-github)
-- [Licence and use](#licence-and-use)
-
-## Overview
-
-This repository implements the customer-support calling agent described in
-`AI_Customer_Calling_Agent_Development_Plan.docx`:
-
-- **Week 1 — decision layer.** The agent understands the customer's request,
-  looks up approved sample data, replies in short speakable sentences, and flags
-  calls that need a human representative.
-- **Week 2 — conversation and voice.** A per-call session adds automatic
-  escalation and a handoff summary, and a local voice loop speaks the replies
-  through the Windows voice (or prints them when no voice is available).
-- **Week 3 — business system and visibility.** A local SQLite CRM and call log
-  save every finished simulated call, and a password-protected dashboard shows
-  call logs, transcripts and analytics. A static copy of the dashboard is
-  published for demos.
+A working prototype of the customer-support calling agent described in
+`AI_Customer_Calling_Agent_Development_Plan.docx`. Week 1 delivers the decision
+layer of the agent: it understands the customer's request, looks up approved
+sample data, replies in short speakable sentences, and flags calls that need a
+human representative. Week 2 adds a call session with automatic escalation and
+a local voice loop: typed words go in, and the reply is spoken through the
+Windows voice (or printed when no voice is available). Week 3 connects a local
+SQLite CRM and call log, saves every finished simulated call, and serves a
+password-protected local dashboard with call logs, transcripts and analytics.
 
 **This is not a live phone agent yet.** No phone line, microphone or
 speech-recognition engine is connected. The "customer" text is typed or supplied
 by the demo script; it is not a transcript of real audio. The CRM holds
 fictional sample customers, and the dashboard shows the text transcript only —
 there are no call recordings.
-
-## What works today
-
-| Area | What it does | Week |
-| --- | --- | --- |
-| Intent detection | Greeting, order status, business hours, FAQ, human handoff, fallback, goodbye, empty input | 1 |
-| Order lookup | Validates order numbers against fictional sample orders and answers with status and tracking | 1 |
-| Knowledge base | Answers only from approved FAQ entries; no guessing | 2 |
-| Call session | Per-call state, 3-strike fallback escalation, handoff summary | 2 |
-| Voice loop | Typed input as the STT stand-in; replies spoken by Windows SAPI | 2 |
-| CRM | SQLite customers, orders and interactions with fictional seed data | 3 |
-| Call log | Transcript, outcome, caller and handoff note saved per call | 3 |
-| Analytics | Total calls, escalation rate, average turns, intents, calls per day | 3 |
-| Dashboard | Password login, overview, filterable call list, transcript detail | 3 |
-| Static demo | Read-only HTML/CSS/JS copy of the dashboard, deployed on Vercel | 3 |
 
 ## Live demo
 
@@ -84,26 +27,6 @@ analytics, a Calls list with full transcripts, and a Journey tab that explains
 what each project week delivered, how it was tested, and what is still blocked.
 The data is fictional sample calls, and no telephony, CRM API or audio is
 connected.
-
-## Quick start
-
-```bash
-# 1. Run the test suite (standard library only)
-python -m unittest discover -s tests -t . -v
-
-# 2. Week 1 text prototype with a fixed sample conversation
-python -m src.cli --demo
-
-# 3. Week 2 + 3 simulated call; the finished call is saved to SQLite
-python -m src.voice.demo --silent
-
-# 4. Week 3 dashboard at http://127.0.0.1:8080/
-DASHBOARD_PASSWORD="change-me" python -m src.dashboard
-```
-
-On Windows PowerShell, set the password with `$env:DASHBOARD_PASSWORD = "change-me"`
-before running step 4. Detailed options are in [Run the simulated
-call](#run-the-simulated-call).
 
 ---
 
@@ -213,8 +136,6 @@ fresh; they are recreated (customers and orders are reseeded, calls are not).
 ├── WEEK3_DEVELOPMENT_DOCUMENT.docx   # generated Week 3 report (same theme)
 ├── requirements.txt                  # runtime: standard library only
 ├── requirements-dev.txt              # pytest + python-docx
-├── vercel.json                       # static hosting: framework auto-detection off
-├── .vercelignore                     # keeps Python files out of a Vercel upload
 ├── .gitignore
 ├── src/
 │   ├── __init__.py
@@ -268,19 +189,6 @@ fresh; they are recreated (customers and orders are reseeded, calls are not).
     ├── build_week3_document.py       # regenerates the Week 3 .docx
     └── check_week3_dashboard.py      # starts a loopback dashboard and verifies every page
 ```
-
-## Tech stack
-
-| Layer | Technology |
-| --- | --- |
-| Language | Python 3.12 (3.10+), standard library only at runtime |
-| Tests | `unittest` (also runs under pytest), 104 tests |
-| Storage | SQLite via `sqlite3` — one database for the CRM, one for the call log |
-| Dashboard server | `http.server` on loopback, `hmac` password check, HttpOnly + SameSite=Strict session cookie, HTML escaping, 4 KB request limit |
-| Voice output | Windows SAPI through PowerShell; printed fallback elsewhere |
-| Static demo | Plain HTML, CSS and JavaScript — no framework, no build step |
-| Hosting | Vercel static deployment; the Python dashboard does not run there |
-| Reports | python-docx generator scripts with a shared black / dark-blue theme |
 
 ## Setup
 
@@ -374,7 +282,7 @@ with fictional data only. Run `python -m scripts.check_week3_dashboard` to start
 a temporary dashboard and verify login, pages, filters, escaping and logout over
 real HTTP (captured output: `docs/week3_dashboard_check.txt`).
 
-## Hosted dashboard demo
+### Hosted dashboard demo
 
 `web/` is a static, read-only publication of the same dashboard views for
 sharing screenshots or a quick demo:
@@ -393,7 +301,7 @@ has no backend, CRM API, telephony or audio. Local checks are recorded in
 The published copy is public: the URL opens in any browser, and the demo
 passcode is filled in on the sign-in form.
 
-## Deploy the static demo on Vercel
+### Deploy the static demo on Vercel
 
 `vercel.json` at the repository root turns off framework auto-detection so the
 static files are served as-is. Connect the repository at
@@ -407,22 +315,7 @@ npx vercel --prod
 The Python dashboard, SQLite call log and CRM do **not** run on Vercel — only
 the static demo does. Either way the demo passcode stays `week3-demo`.
 
-## Rebuild the reports
-
-Each report is generated from Markdown in `docs/` so it can be edited and
-rebuilt with the same theme.
-
-### Week 1 report
-
-```bash
-pip install -r requirements-dev.txt
-python scripts/build_week1_document.py
-```
-
-Source: `docs/WEEK1_DEVELOPMENT_DOCUMENT.md`. Output:
-`WEEK1_DEVELOPMENT_DOCUMENT.docx`.
-
-### Week 2 report
+### Rebuild the Week 2 report
 
 ```bash
 pip install -r requirements-dev.txt
@@ -432,7 +325,7 @@ python scripts/build_week2_document.py
 The Markdown in `docs/WEEK2_DEVELOPMENT_DOCUMENT.md` is the editable source; the
 script applies the same black and dark-blue theme as the Week 1 report.
 
-### Week 3 report
+### Rebuild the Week 3 report
 
 ```bash
 pip install -r requirements-dev.txt
@@ -462,16 +355,10 @@ Ran 104 tests in 5.1s
 OK
 ```
 
-| Week | Test files | Tests |
-| --- | --- | --- |
-| Week 1 | `test_agent.py` | 27 |
-| Week 2 | `test_knowledge_base.py`, `test_session.py`, `test_voice_pipeline.py` | 38 |
-| Week 3 | `test_crm.py`, `test_call_store.py`, `test_dashboard.py` | 39 |
-| **Total** | | **104** |
-
-The Week 3 dashboard tests include HTTP-level checks against a real loopback
-server. Actual captured output: `docs/week3_test_results.txt`; earlier runs are
-kept in `docs/week2_test_results.txt` and `docs/test_results.txt`.
+That is the 27 Week 1 tests, 38 Week 2 tests (knowledge base, session, voice
+pipeline) and 39 Week 3 tests (CRM, call store, dashboard), including the
+HTTP-level dashboard checks. Actual captured output: `docs/week3_test_results.txt`;
+earlier runs are kept in `docs/week2_test_results.txt` and `docs/test_results.txt`.
 
 ## Supported intents
 
@@ -631,15 +518,5 @@ paths changed before adding.
 
 Keep `.env` files, tokens and phone numbers out of the repository; `.gitignore`
 already excludes common secret and environment files.
-
-## Licence and use
-
-This is an educational internship project. All customer names, orders, phone
-numbers and calls in the repository and in the hosted demo are fictional sample
-data. Do not use it to place real calls or to store real customer data until the
-sample data and the local SQLite stand-ins are replaced with client-approved
-systems and the compliance items listed in [Week 1 status](#week-1-status) are
-in place. No third-party code or assets are bundled.
-
 
 
