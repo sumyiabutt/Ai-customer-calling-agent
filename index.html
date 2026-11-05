@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Customer Calling Agent — Live voice support</title>
+<meta name="description" content="Talk to Sumyia, an AI customer-support voice agent, in the browser. It answers from approved order and FAQ data, hands off to a human when needed, and saves every call to the dashboard.">
+<meta name="theme-color" content="#0b0b0c">
+<meta property="og:title" content="AI Customer Calling Agent — Live voice support">
+<meta property="og:description" content="A live browser voice agent with order status, approved FAQ answers, human handoff and a call log. English voice today; Urdu is next.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230f2c59'/%3E%3Ctext x='32' y='45' font-family='Arial' font-size='34' font-weight='700' fill='%23ffffff' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="top">
+  <a class="brand" href="#/">AI Calling Agent</a>
+  <nav aria-label="Main">
+    <a href="#/" data-nav="home">Home</a>
+    <a href="#/dashboard" data-nav="dashboard">Dashboard</a>
+    <a href="#/calls" data-nav="calls">Call log</a>
+    <a href="#/journey" data-nav="journey">Journey</a>
+    <a href="#/how-it-works" data-nav="how">How it works</a>
+    <a href="#/testing" data-nav="testing">Testing</a>
+    <button class="nav-call" type="button" data-action="talk">Talk to agent</button>
+  </nav>
+</header>
+
+<main id="main" tabindex="-1"></main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <p class="footer-brand">AI Customer Calling Agent</p>
+      <p class="footer-copy">A customer-support voice agent built in three stages:
+        intent detection, approved-data answers, a local voice loop, a SQLite CRM,
+        a call log and an admin dashboard.</p>
+      <p class="footer-copy">Python 3.12 &middot; SQLite &middot; plain HTML, CSS and JavaScript</p>
+    </div>
+    <div class="footer-col">
+      <h2>Explore</h2>
+      <a href="#/">Home</a>
+      <a href="#/dashboard">Dashboard</a>
+      <a href="#/calls">Call log</a>
+      <a href="#/journey">Build journey</a>
+      <a href="#/how-it-works">How it works</a>
+      <a href="#/testing">Testing</a>
+    </div>
+    <div class="footer-col">
+      <h2>Reports</h2>
+      <a href="WEEK1_DEVELOPMENT_DOCUMENT.docx" download>Stage 1 report (DOCX)</a>
+      <a href="WEEK2_DEVELOPMENT_DOCUMENT.docx" download>Stage 2 report (DOCX)</a>
+      <a href="WEEK3_DEVELOPMENT_DOCUMENT.docx" download>Stage 3 report (DOCX)</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>Sample and live calls are labelled. No phone line is connected and no call audio is recorded.</span>
+    <span>Last updated 5 November 2026</span>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

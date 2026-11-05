@@ -1,0 +1,1758 @@
+/* AI Customer Calling Agent website.
+ *
+ * Views: home, dashboard, call log, sample and live call detail, build journey,
+ * how it works, testing. Sample call records reproduce the captured stages.
+ * Live calls come from the Vapi browser agent through the /api functions and
+ * are labelled separately. No call audio is stored.
+ */
+
+'use strict';
+
+const DATA_TODAY = '2026-11-02';
+const TOTAL_TESTS = 104;
+const VOICE_API = '/api';
+
+const REPLIES = {
+  greeting:
+    "Hello, and thank you for calling Sample Store Support. I'm an AI assistant, " +
+    'and this call may be recorded. I can help with order status, business hours ' +
+    'and common questions. How can I help you today?',
+  askOrder: 'Of course. Please tell me your order number, for example ORD-1001.',
+  fallback:
+    "Sorry, I didn't quite understand that. I can help with order status, " +
+    'business hours, delivery and returns questions, or connect you to a human ' +
+    'representative. Could you rephrase your question?',
+  hours:
+    'Our team is available Monday to Friday from 9 AM to 6 PM; Saturday from ' +
+    '10 AM to 2 PM; closed on Sunday (Asia/Karachi).',
+  handoff:
+    "I'm connecting you to a human representative now. Our team is available " +
+    'Monday to Friday from 9 AM to 6 PM; Saturday from 10 AM to 2 PM; closed on ' +
+    'Sunday (Asia/Karachi). A colleague will be with you shortly.',
+  autoHandoff:
+    "I'm sorry, I'm still having trouble understanding you. I'm connecting you " +
+    'to a human representative now. Our team is available Monday to Friday from ' +
+    '9 AM to 6 PM; Saturday from 10 AM to 2 PM; closed on Sunday (Asia/Karachi). ' +
+    'A colleague will be with you shortly.',
+  goodbye: "You're welcome. Thank you for calling Sample Store Support. Goodbye!",
+};
+
+const ORDER_REPLIES = {
+  'ORD-1001':
+    'Order ORD-1001 is marked as Shipped. It left the warehouse and is with the ' +
+    'courier. Expected delivery: 30 October 2026. Tracking number: ' +
+    'TRK-SAMPLE-1001. Is there anything else I can help you with?',
+  'ORD-1002':
+    'Order ORD-1002 is marked as Processing. Payment is confirmed and the order ' +
+    'is being packed. Expected delivery: 2 November 2026. Is there anything ' +
+    'else I can help you with?',
+  'ORD-1003':
+    'Order ORD-1003 is marked as Delivered. It was delivered to the address on ' +
+    'file on 26 October 2026. Tracking number: TRK-SAMPLE-1003. Is there ' +
+    'anything else I can help you with?',
+  'ORD-1004':
+    'Order ORD-1004 is marked as Out for delivery. It is with the delivery rider ' +
+    'and is expected today. Tracking number: TRK-SAMPLE-1004. Is there anything ' +
+    'else I can help you with?',
+  'ORD-1005':
+    'Order ORD-1005 is marked as Cancelled. It was cancelled at the customer\'s ' +
+    'request and the refund is in progress. Is there anything else I can help ' +
+    'you with?',
+};
+
+const FAQ_REPLIES = {
+  shipping:
+    'Standard delivery takes 3 to 5 working days after dispatch. Orders placed ' +
+    'before 2 PM are usually dispatched the same working day. Is there anything ' +
+    'else I can help you with?',
+  charges:
+    'Standard delivery is free for sample orders above 3,000 rupees. Below that, ' +
+    'a flat sample fee of 250 rupees applies. Is there anything else I can help ' +
+    'you with?',
+  returns:
+    'You can request a return within 7 days of delivery if the item is unused ' +
+    'and in its original packaging. Approved refunds are processed within 5 to ' +
+    '7 working days. Is there anything else I can help you with?',
+  payment:
+    'Sample payment methods are cash on delivery, debit or credit card, and bank ' +
+    'transfer. Card details are never collected over the phone. Is there ' +
+    'anything else I can help you with?',
+  warranty:
+    'Sample items carry a 6-month limited warranty that covers manufacturing ' +
+    'defects. Damage caused by misuse is not covered. Is there anything else I ' +
+    'can help you with?',
+};
+
+function turn(message, intent, reply, escalated) {
+  return { message, intent, reply, escalated: Boolean(escalated) };
+}
+
+const CALLS = [
+  {
+    id: 1,
+    started_at: '2026-11-02T17:49:25Z',
+    ended_at: '2026-11-02T17:52:10Z',
+    caller_phone: '0300-0000001',
+    customer_id: 'CUST-001',
+    customer_name: 'Sample Customer A',
+    outcome: 'transferred',
+    escalated: true,
+    turns: [
+      turn('Hello', 'greeting', REPLIES.greeting),
+      turn('Where is my order ORD-1002?', 'order_status', ORDER_REPLIES['ORD-1002']),
+      turn('How long does delivery take?', 'faq', FAQ_REPLIES.shipping),
+      turn('Can you cancel my subscription?', 'fallback', REPLIES.fallback),
+      turn('What is the weather in Karachi?', 'fallback', REPLIES.fallback),
+      turn('Do you also sell laptops?', 'handoff', REPLIES.autoHandoff, true),
+      turn("Okay, that's all. Thank you", 'goodbye', REPLIES.goodbye),
+    ],
+  },
+  {
+    id: 2,
+    started_at: '2026-11-02T15:12:00Z',
+    ended_at: '2026-11-02T15:14:20Z',
+    caller_phone: '0300-0000002',
+    customer_id: 'CUST-002',
+    customer_name: 'Sample Customer B',
+    outcome: 'closed',
+    escalated: false,
+    turns: [
+      turn('Hello', 'greeting', REPLIES.greeting),
+      turn('Has ORD-1003 arrived?', 'order_status', ORDER_REPLIES['ORD-1003']),
+      turn('Great, thanks. Bye', 'goodbye', REPLIES.goodbye),
+    ],
+  },
+  {
+    id: 3,
+    started_at: '2026-11-02T12:40:00Z',
+    ended_at: '2026-11-02T12:43:05Z',
+    caller_phone: '0300-0000003',
+    customer_id: 'CUST-003',
+    customer_name: 'Sample Customer C',
+    outcome: 'closed',
+    escalated: false,
+    turns: [
+      turn('Hi there', 'greeting', REPLIES.greeting),
+      turn('What are your business hours?', 'business_hours', REPLIES.hours),
+      turn('What is your return policy?', 'faq', FAQ_REPLIES.returns),
+      turn('Okay, thank you', 'goodbye', REPLIES.goodbye),
+    ],
+  },
+  {
+    id: 4,
+    started_at: '2026-11-01T18:05:00Z',
+    ended_at: '2026-11-01T18:08:40Z',
+    caller_phone: '0345-1112233',
+    customer_id: null,
+    customer_name: null,
+    outcome: 'transferred',
+    escalated: true,
+    turns: [
+      turn('Hello', 'greeting', REPLIES.greeting),
+      turn('I need help with my parcel', 'order_status', REPLIES.askOrder),
+      turn('Can you book a flight for me?', 'fallback', REPLIES.fallback),
+      turn("What's the weather in Karachi?", 'fallback', REPLIES.fallback),
+      turn('Do you also sell laptops?', 'handoff', REPLIES.autoHandoff, true),
+      turn('Okay, bye', 'goodbye', REPLIES.goodbye),
+    ],
+  },
+  {
+    id: 5,
+    started_at: '2026-11-01T10:20:00Z',
+    ended_at: '2026-11-01T10:22:15Z',
+    caller_phone: '0300-0000004',
+    customer_id: 'CUST-004',
+    customer_name: 'Sample Customer D',
+    outcome: 'closed',
+    escalated: false,
+    turns: [
+      turn('Hello', 'greeting', REPLIES.greeting),
+      turn('Where is ORD-1004?', 'order_status', ORDER_REPLIES['ORD-1004']),
+      turn('Perfect, thanks', 'goodbye', REPLIES.goodbye),
+    ],
+  },
+  {
+    id: 6,
+    started_at: '2026-11-01T09:05:00Z',
+    ended_at: '2026-11-01T09:06:50Z',
+    caller_phone: '0300-0000005',
+    customer_id: 'CUST-005',
+    customer_name: 'Sample Customer E',
+    outcome: 'closed',
+    escalated: false,
+    turns: [
+      turn('Assalam o Alaikum', 'greeting', REPLIES.greeting),
+      turn('Is ORD-1005 cancelled?', 'order_status', ORDER_REPLIES['ORD-1005']),
+      turn('Alright, thank you', 'goodbye', REPLIES.goodbye),
+    ],
+  },
+  {
+    id: 7,
+    started_at: '2026-10-31T16:30:00Z',
+    ended_at: '2026-10-31T16:31:40Z',
+    caller_phone: '0300-0000001',
+    customer_id: 'CUST-001',
+    customer_name: 'Sample Customer A',
+    outcome: 'open',
+    escalated: false,
+    turns: [
+      turn('Hello', 'greeting', REPLIES.greeting),
+      turn('Which payment methods do you accept?', 'faq', FAQ_REPLIES.payment),
+    ],
+  },
+  {
+    id: 8,
+    started_at: '2026-10-31T11:15:00Z',
+    ended_at: '2026-10-31T11:18:30Z',
+    caller_phone: '0300-0000002',
+    customer_id: 'CUST-002',
+    customer_name: 'Sample Customer B',
+    outcome: 'transferred',
+    escalated: true,
+    turns: [
+      turn('Hello', 'greeting', REPLIES.greeting),
+      turn('Where is ORD-1002?', 'order_status', ORDER_REPLIES['ORD-1002']),
+      turn('Can you change my delivery address?', 'fallback', REPLIES.fallback),
+      turn('Please connect me to a person', 'handoff', REPLIES.handoff, true),
+    ],
+  },
+  {
+    id: 9,
+    started_at: '2026-10-30T14:45:00Z',
+    ended_at: '2026-10-30T14:49:10Z',
+    caller_phone: '0300-0000003',
+    customer_id: 'CUST-003',
+    customer_name: 'Sample Customer C',
+    outcome: 'closed',
+    escalated: false,
+    turns: [
+      turn('Hello', 'greeting', REPLIES.greeting),
+      turn('What are the delivery charges?', 'faq', FAQ_REPLIES.charges),
+      turn('Is there a warranty?', 'faq', FAQ_REPLIES.warranty),
+      turn('What about returns?', 'faq', FAQ_REPLIES.returns),
+      turn("That's all, thanks", 'goodbye', REPLIES.goodbye),
+    ],
+  },
+  {
+    id: 10,
+    started_at: '2026-10-30T10:10:00Z',
+    ended_at: '2026-10-30T10:11:55Z',
+    caller_phone: '0321-9988776',
+    customer_id: null,
+    customer_name: null,
+    outcome: 'closed',
+    escalated: false,
+    turns: [
+      turn('Hello', 'greeting', REPLIES.greeting),
+      turn('What time do you close?', 'business_hours', REPLIES.hours),
+      turn('Thanks', 'goodbye', REPLIES.goodbye),
+    ],
+  },
+  {
+    id: 11,
+    started_at: '2026-10-29T13:25:00Z',
+    ended_at: '2026-10-29T13:28:20Z',
+    caller_phone: '0300-0000004',
+    customer_id: 'CUST-004',
+    customer_name: 'Sample Customer D',
+    outcome: 'closed',
+    escalated: false,
+    turns: [
+      turn('Hi', 'greeting', REPLIES.greeting),
+      turn('Where is ORD-1004?', 'order_status', ORDER_REPLIES['ORD-1004']),
+      turn('What is the return policy?', 'faq', FAQ_REPLIES.returns),
+      turn('Okay bye', 'goodbye', REPLIES.goodbye),
+    ],
+  },
+  {
+    id: 12,
+    started_at: '2026-10-28T17:55:00Z',
+    ended_at: '2026-10-28T17:59:30Z',
+    caller_phone: '0300-0000005',
+    customer_id: 'CUST-005',
+    customer_name: 'Sample Customer E',
+    outcome: 'transferred',
+    escalated: true,
+    turns: [
+      turn('Hello', 'greeting', REPLIES.greeting),
+      turn('Where is ORD-1005?', 'order_status', ORDER_REPLIES['ORD-1005']),
+      turn('I want a refund', 'faq', FAQ_REPLIES.returns),
+      turn('Can I speak to a human?', 'handoff', REPLIES.handoff, true),
+      turn('Thank you', 'goodbye', REPLIES.goodbye),
+    ],
+  },
+];
+
+/* ---------- Derived data ---------- */
+
+const OUTCOME_LABELS = {
+  transferred: 'transferred to a human representative',
+  closed: 'closed by the customer',
+  open: 'still in progress',
+};
+
+function summarize(call) {
+  const topics = [];
+  for (const item of call.turns) {
+    const topic = item.intent.replace(/_/g, ' ');
+    if (!topics.includes(topic)) topics.push(topic);
+  }
+  return (
+    `${call.turns.length} customer turn(s); topics: ${topics.join(', ')}; ` +
+    `outcome: ${OUTCOME_LABELS[call.outcome]}.`
+  );
+}
+
+function latestFirst(calls) {
+  return [...calls].sort((a, b) => b.started_at.localeCompare(a.started_at));
+}
+
+function lastSevenDays() {
+  const days = [];
+  const end = new Date(`${DATA_TODAY}T00:00:00Z`);
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const day = new Date(end);
+    day.setUTCDate(day.getUTCDate() - offset);
+    days.push(day.toISOString().slice(0, 10));
+  }
+  return days;
+}
+
+function computeStats(calls) {
+  const total = calls.length;
+  const escalated = calls.filter((call) => call.escalated).length;
+  const turns = calls.reduce((sum, call) => sum + call.turns.length, 0);
+  const outcomes = { transferred: 0, closed: 0, open: 0 };
+  const intents = {};
+  for (const call of calls) {
+    outcomes[call.outcome] += 1;
+    for (const item of call.turns) {
+      intents[item.intent] = (intents[item.intent] || 0) + 1;
+    }
+  }
+  const days = lastSevenDays().map((day) => ({
+    day,
+    calls: calls.filter((call) => call.started_at.slice(0, 10) === day).length,
+  }));
+  return {
+    total,
+    escalated,
+    escalationRate: total ? Math.round((escalated * 1000) / total) / 10 : 0,
+    totalTurns: turns,
+    averageTurns: total ? Math.round((turns * 10) / total) / 10 : 0,
+    outcomes,
+    intents,
+    days,
+  };
+}
+
+const STATS = computeStats(CALLS);
+const SORTED_CALLS = latestFirst(CALLS);
+
+const WEEKS = [
+  {
+    week: 'Stage 1',
+    date: '28 October 2026',
+    title: 'Discovery and foundation',
+    summary:
+      'A text-only support prototype with intent detection, order validation, ' +
+      'FAQ answers, fallback handling and a human handoff path.',
+    points: [
+      'Use case, scope, requirements and risks written down',
+      'Eight intents, including invalid order numbers and empty input',
+      'Order lookup for ORD-1001 to ORD-1005',
+      'Fallback reply and human handoff path',
+      '27 unit tests and the Stage 1 report',
+    ],
+    evidence: '27 automated tests',
+    pending: 'First live test call: no telephony account, number or credentials.',
+    link: { label: 'See the intent list', href: '#/how-it-works' },
+  },
+  {
+    week: 'Stage 2',
+    date: '31 October 2026',
+    title: 'Conversation quality and a local voice loop',
+    summary:
+      'A validated knowledge base, per-call session state, three-strike ' +
+      'automatic escalation, a handoff summary and a local voice loop.',
+    points: [
+      'Knowledge base with five approved FAQ topics (14 tests)',
+      'Per-call session with three-strike escalation and handoff summary (12 tests)',
+      'Voice pipeline with pluggable speech-to-text and text-to-speech (12 tests)',
+      'Windows SAPI speech output with a printed fallback',
+      '65 tests in total and the Stage 2 report',
+    ],
+    evidence: '65 automated tests',
+    pending: 'Streaming speech recognition and a live telephony test call.',
+    link: { label: 'How the session works', href: '#/how-it-works' },
+  },
+  {
+    week: 'Stage 3',
+    date: '2 November 2026',
+    title: 'CRM, call log and admin dashboard',
+    summary:
+      'A local SQLite CRM, a saved call log with transcripts and outcomes, ' +
+      'analytics, and a password-protected admin dashboard.',
+    points: [
+      'SQLite CRM with customers, orders and interactions (10 tests)',
+      'Call log with transcript, outcome and caller link (10 tests)',
+      'Dashboard login, filters and transcript pages (19 tests)',
+      '19 live HTTP checks against the local server',
+      '104 tests in total and the Stage 3 report',
+    ],
+    evidence: '104 automated tests',
+    pending: 'Real client CRM API, call recordings and production authentication.',
+    link: { label: 'Open the dashboard', href: '#/dashboard' },
+  },
+];
+
+const INTENTS = [
+  ['greeting', '"Hello", "Assalam o Alaikum"', 'Returns the greeting and lists what it can help with.'],
+  ['order_status', '"Where is ORD-1002?"', 'Validates the order number and reads status, expected date and tracking.'],
+  ['business_hours', '"What time do you close?"', 'Answers from the approved business-hours entry.'],
+  ['faq', '"What is your return policy?"', 'Answers only from the five approved FAQ topics.'],
+  ['handoff', '"Can I speak to a human?"', 'Confirms the transfer and marks the call escalated.'],
+  ['goodbye', '"Thanks, bye"', 'Closes the conversation politely.'],
+  ['fallback', '"Book me a flight"', 'Says it did not understand and offers the supported topics.'],
+  ['empty', '(no input)', 'Asks the caller to repeat and counts it as a failed turn.'],
+];
+
+/* ---------- Helpers ---------- */
+
+const $ = (selector, root = document) => root.querySelector(selector);
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (character) => {
+    switch (character) {
+      case '&': return '&amp;';
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '"': return '&quot;';
+      default: return '&#39;';
+    }
+  });
+}
+
+function formatTime(iso) {
+  if (!iso) return '-';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return escapeHtml(iso);
+  const formatted = new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'UTC',
+  }).format(date);
+  return `${escapeHtml(formatted)} UTC`;
+}
+
+function formatShortTime(iso) {
+  if (!iso) return '-';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return escapeHtml(iso);
+  const formatted = new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'UTC',
+  }).format(date);
+  return `${escapeHtml(formatted)} UTC`;
+}
+
+function formatDay(day) {
+  const date = new Date(`${day}T00:00:00Z`);
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    timeZone: 'UTC',
+  }).format(date);
+}
+
+function badge(outcome) {
+  return `<span class="badge ${escapeHtml(outcome)}">${escapeHtml(outcome)}</span>`;
+}
+
+function shortText(text, limit = 86) {
+  return text.length <= limit ? escapeHtml(text) : `${escapeHtml(text.slice(0, limit - 1))}\u2026`;
+}
+
+function plural(count, singular) {
+  return `${count} ${singular}${count === 1 ? '' : 's'}`;
+}
+
+/* ---------- Shared partials ---------- */
+
+function callsTable(calls, emptyMessage) {
+  if (!calls.length) {
+    return `<div class="empty">${escapeHtml(emptyMessage)}</div>`;
+  }
+  const rows = calls.map((call) => `
+    <tr>
+      <td class="num"><a href="#/calls/${call.id}">${call.id}</a></td>
+      <td>${formatShortTime(call.started_at)}</td>
+      <td class="phone">${escapeHtml(call.caller_phone)}</td>
+      <td>${escapeHtml(call.customer_name || 'Unknown caller')}</td>
+      <td>${badge(call.outcome)}</td>
+      <td class="num">${call.turns.length}</td>
+      <td>${shortText(summarize(call))}</td>
+    </tr>`).join('');
+  return `
+    <div class="table-wrap">
+      <table class="calls-table">
+        <thead>
+          <tr>
+            <th class="num">Call</th><th>Started</th><th>Caller</th>
+            <th>Customer</th><th>Outcome</th><th class="num">Turns</th>
+            <th>Summary</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function barList(entries, tone, labelFn) {
+  const max = Math.max(...entries.map(([, count]) => count), 1);
+  return `<div class="bars">${entries.map(([name, count]) => `
+    <div class="bar-row">
+      <span class="bar-label">${escapeHtml(labelFn ? labelFn(name) : name)}</span>
+      <span class="bar-value">${count}</span>
+      <span class="bar-track"><span class="bar-fill ${tone}" style="width:${Math.round((count / max) * 100)}%"></span></span>
+    </div>`).join('')}</div>`;
+}
+
+/* ---------- Live voice calls ---------- */
+
+let liveCalls = [];
+let liveCallsState = 'idle';
+let liveCallsError = '';
+const dock = { vapi: null, muted: false, timer: null, started: 0, busy: false };
+
+async function fetchJson(path, options) {
+  const response = await fetch(path, {
+    headers: { Accept: 'application/json', ...(options && options.headers) },
+    ...options,
+  });
+  const text = await response.text();
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
+  if (!response.ok) {
+    throw new Error(data.error || `Request failed (${response.status})`);
+  }
+  return data;
+}
+
+async function loadLiveCalls(force) {
+  if (liveCallsState === 'loading') return;
+  if (liveCallsState === 'ready' && !force) {
+    renderLivePanel();
+    return;
+  }
+  if (liveCallsState === 'error' && !force) {
+    renderLivePanel();
+    return;
+  }
+  liveCallsState = 'loading';
+  liveCallsError = '';
+  try {
+    const data = await fetchJson(`${VOICE_API}/calls`);
+    liveCalls = Array.isArray(data.calls) ? data.calls : [];
+    liveCallsState = 'ready';
+  } catch (error) {
+    liveCalls = [];
+    liveCallsState = 'error';
+    liveCallsError = error.message;
+  }
+  renderLivePanel();
+}
+
+function liveBadge() {
+  return '<span class="badge live">Live call</span>';
+}
+
+function sampleBadge() {
+  return '<span class="badge sample">Sample data</span>';
+}
+
+function formatDuration(seconds) {
+  if (seconds === null || seconds === undefined || seconds === '') return '-';
+  const total = Math.max(0, Math.round(Number(seconds)));
+  const minutes = Math.floor(total / 60);
+  const rest = String(total % 60).padStart(2, '0');
+  return `${minutes}:${rest}`;
+}
+
+function liveCallsPanel() {
+  return `
+    <section class="panel" aria-labelledby="live-calls-title">
+      <div class="panel-head">
+        <h2 id="live-calls-title">Live calls</h2>
+        ${liveBadge()}
+      </div>
+      <p class="panel-note">Calls from the browser voice agent, saved to the hosted
+        database. These are real conversations, separate from the sample records below.</p>
+      <div id="live-panel"><div class="empty">Loading live calls\u2026</div></div>
+    </section>`;
+}
+
+function renderLivePanel() {
+  const target = document.getElementById('live-panel');
+  if (!target) return;
+
+  if (liveCallsState === 'loading' || liveCallsState === 'idle') {
+    target.innerHTML = '<div class="empty">Loading live calls\u2026</div>';
+    return;
+  }
+  if (liveCallsState === 'error') {
+    const offline = /404|Failed to fetch|NetworkError/i.test(liveCallsError);
+    target.innerHTML = offline
+      ? '<div class="empty">Live calling needs the Vercel API deployment. This copy of the site shows sample data only.</div>'
+      : `<div class="empty">Live calls are unavailable right now. ${escapeHtml(liveCallsError)}</div>`;
+    return;
+  }
+  if (!liveCalls.length) {
+    target.innerHTML =
+      '<div class="empty">No live calls yet. Use \u201cTalk to the agent\u201d to make the first one.</div>';
+    return;
+  }
+
+  const rows = liveCalls.map((call) => `
+    <tr>
+      <td><a href="#/live/${encodeURIComponent(call.id)}">${escapeHtml(shortId(call.id))}</a></td>
+      <td>${formatShortTime(call.started_at || call.created_at)}</td>
+      <td class="phone">${escapeHtml(call.caller_phone || 'Web call')}</td>
+      <td>${formatDuration(call.duration_seconds)}</td>
+      <td>${badge(call.outcome || 'info_only')}</td>
+      <td>${shortText(call.summary || 'No summary saved', 70)}</td>
+    </tr>`).join('');
+
+  target.innerHTML = `
+    <div class="table-wrap">
+      <table class="calls-table">
+        <thead>
+          <tr><th>Call</th><th>Started</th><th>Caller</th><th>Duration</th>
+            <th>Outcome</th><th>Summary</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function shortId(id) {
+  return String(id || '').slice(0, 8);
+}
+
+async function loadLiveDetail(id) {
+  const target = document.getElementById('live-detail');
+  if (!target) return;
+  try {
+    const data = await fetchJson(`${VOICE_API}/calls?id=${encodeURIComponent(id)}`);
+    target.innerHTML = liveDetailBody(data.call);
+  } catch (error) {
+    target.innerHTML = `
+      <h1>Live call not found</h1>
+      <p class="page-sub">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+function liveDetailBody(call) {
+  const turns = Array.isArray(call.turns) ? call.turns : [];
+  const rows = turns.length
+    ? turns.map((item, index) => `
+      <tr>
+        <td class="num">${index + 1}</td>
+        <td>${escapeHtml(item.role === 'customer' ? 'Customer' : 'Agent')}</td>
+        <td class="turn-message">${escapeHtml(item.text)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="3" class="empty">No transcript was saved for this call.</td></tr>';
+
+  return `
+    <div class="page-head">
+      <div class="call-head">
+        <h1>Live call ${escapeHtml(shortId(call.id))}</h1>
+        ${liveBadge()} ${badge(call.outcome || 'info_only')}
+      </div>
+      <p class="page-sub" style="margin:0">${formatTime(call.started_at)} to ${formatTime(call.ended_at)}</p>
+    </div>
+
+    <div class="note">
+      <strong>Audio:</strong> not recorded or stored. This page holds the text
+      transcript and summary only.
+    </div>
+
+    <div class="detail-grid">
+      <section class="panel" aria-labelledby="live-facts-title">
+        <h2 id="live-facts-title">Call details</h2>
+        <dl class="facts">
+          <dt>Caller</dt><dd>${escapeHtml(call.caller_phone || 'Web call')}</dd>
+          <dt>Customer</dt><dd>${escapeHtml(call.customer_name || 'Not given')}</dd>
+          <dt>Duration</dt><dd>${formatDuration(call.duration_seconds)}</dd>
+          <dt>Outcome</dt><dd>${badge(call.outcome || 'info_only')}</dd>
+          <dt>Handoff</dt><dd>${call.handoff ? 'Yes' : 'No'}</dd>
+          <dt>Ended because</dt><dd>${escapeHtml(call.ended_reason || '-')}</dd>
+          <dt>Summary</dt><dd>${escapeHtml(call.summary || 'No summary saved')}</dd>
+        </dl>
+      </section>
+
+      <section class="panel" aria-labelledby="live-handoff-title">
+        <h2 id="live-handoff-title">Handoff</h2>
+        <p class="panel-note" style="margin:0">
+          ${call.handoff
+            ? 'A handoff summary was created during this call for the receiving colleague.'
+            : 'No handoff was needed for this call.'}
+        </p>
+      </section>
+    </div>
+
+    <section class="panel" aria-labelledby="live-transcript-title">
+      <h2 id="live-transcript-title">Transcript</h2>
+      <p class="panel-note">${plural(turns.length, 'turn')} saved. Card and ID numbers are masked.</p>
+      <div class="table-wrap">
+        <table class="turns-table">
+          <thead><tr><th class="num">#</th><th>Speaker</th><th>Text</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
+function liveDetailView(id) {
+  return `
+    <p class="back"><a href="#/calls">&larr; Back to the call log</a></p>
+    <div id="live-detail"><div class="empty">Loading live call\u2026</div></div>`;
+}
+
+/* ---------- Browser call dock ---------- */
+
+function ensureDock() {
+  let node = document.getElementById('call-dock');
+  if (node) return node;
+  node = document.createElement('section');
+  node.id = 'call-dock';
+  node.className = 'call-dock';
+  node.setAttribute('aria-live', 'polite');
+  node.hidden = true;
+  node.innerHTML = `
+    <div class="dock-head">
+      <span class="dock-title">Sumyia \u00b7 ShopEasy</span>
+      <span class="dock-status" id="call-status">Ready</span>
+    </div>
+    <p class="dock-note" id="call-note">Allow microphone access when the browser asks.</p>
+    <div class="dock-transcript" id="call-transcript"></div>
+    <div class="dock-actions">
+      <button class="btn btn-primary" id="call-mute" type="button" aria-pressed="false">Mute</button>
+      <button class="btn btn-ghost" id="call-end" type="button">End call</button>
+      <button class="btn btn-ghost" id="call-close" type="button">Close</button>
+    </div>`;
+  document.body.appendChild(node);
+  return node;
+}
+
+function setDockStatus(text, tone) {
+  const status = document.getElementById('call-status');
+  if (!status) return;
+  status.textContent = text;
+  status.className = `dock-status ${tone || ''}`.trim();
+}
+
+function setDockNote(text) {
+  const note = document.getElementById('call-note');
+  if (note) note.textContent = text;
+}
+
+function appendDockTurn(speaker, text) {
+  const box = document.getElementById('call-transcript');
+  if (!box) return;
+  const line = document.createElement('p');
+  line.className = `dock-line ${speaker === 'Customer' ? 'customer' : 'agent'}`;
+  const who = document.createElement('span');
+  who.textContent = speaker;
+  line.appendChild(who);
+  line.appendChild(document.createTextNode(text));
+  box.appendChild(line);
+  while (box.children.length > 8) box.removeChild(box.firstChild);
+  box.scrollTop = box.scrollHeight;
+}
+
+function startDockTimer() {
+  stopDockTimer();
+  dock.started = Date.now();
+  dock.timer = window.setInterval(() => {
+    const seconds = Math.floor((Date.now() - dock.started) / 1000);
+    setDockStatus(`Live \u00b7 ${formatDuration(seconds)}`, 'live');
+  }, 1000);
+}
+
+function stopDockTimer() {
+  if (dock.timer) window.clearInterval(dock.timer);
+  dock.timer = null;
+}
+
+async function startLiveCall() {
+  const node = ensureDock();
+  node.hidden = false;
+  const transcript = document.getElementById('call-transcript');
+  if (transcript) transcript.innerHTML = '';
+  setDockNote('Allow microphone access when the browser asks.');
+  setDockStatus('Connecting\u2026', 'warn');
+
+  if (dock.busy) return;
+  dock.busy = true;
+  try {
+    const config = await fetchJson(`${VOICE_API}/config`);
+    if (!config.configured) {
+      setDockStatus('Not configured', 'warn');
+      setDockNote(
+        'Live calling needs the Vapi and Supabase keys in the hosting environment. ' +
+        'The dashboard still shows sample data.'
+      );
+      return;
+    }
+
+    const module = await import('https://esm.sh/@vapi-ai/web@2');
+    const Vapi = module.default || module.Vapi;
+    const vapi = new Vapi(config.publicKey);
+    dock.vapi = vapi;
+
+    vapi.on('call-start', () => {
+      setDockStatus('Live \u00b7 0:00', 'live');
+      setDockNote('You are speaking with Sumyia, an AI assistant. This call is transcribed.');
+      startDockTimer();
+    });
+    vapi.on('speech-start', () => {
+      if (!dock.muted) setDockNote('Sumyia is speaking. You can interrupt at any time.');
+    });
+    vapi.on('speech-end', () => {
+      if (!dock.muted) setDockNote('Listening\u2026');
+    });
+    vapi.on('message', (message) => {
+      if (message && message.type === 'transcript' && message.transcriptType === 'final') {
+        appendDockTurn(message.role === 'user' ? 'Customer' : 'Agent', message.transcript);
+      }
+    });
+    vapi.on('error', (error) => {
+      setDockStatus('Call error', 'warn');
+      setDockNote((error && (error.message || error.errorMsg)) || 'The call could not start.');
+    });
+    vapi.on('call-end', () => {
+      stopDockTimer();
+      setDockStatus('Call ended', '');
+      setDockNote('Transcript saving to the dashboard\u2026');
+      dock.vapi = null;
+      window.setTimeout(() => {
+        liveCallsState = 'idle';
+        loadLiveCalls(true);
+      }, 4000);
+    });
+
+    await vapi.start(config.assistantId);
+  } catch (error) {
+    const message = String(error.message || 'The voice SDK could not load.');
+    if (/Request failed \(404\)|Failed to fetch|NetworkError/i.test(message)) {
+      setDockStatus('Not available here', 'warn');
+      setDockNote('Live calling runs on the deployed site with the API functions. This page is served without that backend.');
+      return;
+    }
+    setDockStatus('Call failed', 'warn');
+    setDockNote(`${message} Check the microphone permission and connection.`);
+  } finally {
+    dock.busy = false;
+  }
+}
+
+function stopLiveCall() {
+  if (dock.vapi) {
+    try {
+      dock.vapi.stop();
+    } catch {
+      // the call is already closed
+    }
+    dock.vapi = null;
+  }
+  stopDockTimer();
+  setDockStatus('Call ended', '');
+}
+
+function toggleMute() {
+  const button = document.getElementById('call-mute');
+  if (!dock.vapi || !button) return;
+  dock.muted = !dock.muted;
+  dock.vapi.setMuted(dock.muted);
+  button.setAttribute('aria-pressed', String(dock.muted));
+  button.textContent = dock.muted ? 'Unmute' : 'Mute';
+  setDockNote(dock.muted ? 'Microphone muted.' : 'Listening\u2026');
+}
+
+function closeDock() {
+  stopLiveCall();
+  const node = document.getElementById('call-dock');
+  if (node) node.hidden = true;
+}
+
+/* ---------- Home ---------- */
+
+function homeView() {
+  const features = [
+    ['01', 'Understands the request', 'Every customer turn maps to one of eight support intents, from order status to a direct request for a human.'],
+    ['02', 'Checks approved data only', 'Order answers come from the CRM. Hours and FAQ answers come from validated knowledge-base entries, so the agent does not guess.'],
+    ['03', 'Speaks in short sentences', 'Replies are written for a phone call: one or two plain sentences that a voice can read naturally.'],
+    ['04', 'Escalates on purpose', 'A direct request, or three failed turns in a row, transfers the caller with a summary attached.'],
+    ['05', 'Logs every call', 'The finished call is saved with its transcript, outcome and summary. Live web calls go to the hosted call log and appear in the dashboard.'],
+    ['06', 'Shows the numbers', 'The dashboard turns the call log into escalation rate, average turns, intent counts and daily volume.'],
+  ];
+
+  const featureCards = features.map(([num, title, text]) => `
+    <article class="feature">
+      <span class="feature-num">${num}</span>
+      <h3>${escapeHtml(title)}</h3>
+      <p>${escapeHtml(text)}</p>
+    </article>`).join('');
+
+  const timeline = WEEKS.map((item) => `
+    <div class="tl-item">
+      <span class="tl-week">${escapeHtml(item.week)}</span>
+      <span class="tl-date">${escapeHtml(item.date)}</span>
+      <h3 class="tl-title">${escapeHtml(item.title)}</h3>
+      <p class="tl-text">${escapeHtml(item.summary)}</p>
+      <span class="tl-tests">${escapeHtml(item.evidence)}</span>
+    </div>`).join('');
+
+  const arch = [
+    ['01', 'Speech in', 'Typed input stands in for the microphone in this build.'],
+    ['02', 'Intent', 'The sentence is classified into one of eight intents.'],
+    ['03', 'Data lookup', 'Orders from the CRM; hours and FAQs from the knowledge base.'],
+    ['04', 'Session policy', 'Failed turns are counted; a handoff summary is prepared.'],
+    ['05', 'Voice reply', 'A short approved sentence, spoken or printed.'],
+    ['06', 'Record', 'The call and its transcript are written to SQLite.'],
+  ].map(([num, title, note]) => `
+    <div class="arch-step">
+      <span class="arch-num">${num}</span>
+      <span class="arch-title">${escapeHtml(title)}</span>
+      <span class="arch-note">${escapeHtml(note)}</span>
+    </div>`).join('');
+
+  return `
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">AI customer support</p>
+      <h1>AI Customer<br>Calling Agent</h1>
+      <p class="hero-lead">A customer-support voice agent that understands a request,
+        answers from approved business data in short speakable sentences, and
+        transfers the caller to a human when it should.</p>
+      <div class="hero-actions">
+        <button class="btn btn-live" type="button" data-action="talk">Talk to the agent</button>
+        <a class="btn btn-ghost" href="#/dashboard">Open the dashboard</a>
+        <a class="btn btn-ghost" href="#/how-it-works">See how it works</a>
+      </div>
+      <p class="hero-meta">Vapi voice agent &middot; hosted call log &middot; English voice &middot; 104 automated tests</p>
+    </div>
+
+    <div class="call-card" aria-label="Sample call excerpt">
+      <div class="call-card-head">
+        <div>
+          <span class="cc-kicker">Call #1</span>
+          <span class="cc-sub">2 November 2026 &middot; 2m 45s &middot; sample data</span>
+        </div>
+        ${badge('transferred')}
+      </div>
+      <div class="cc-turn">
+        <p class="cc-said"><span class="cc-who">Customer</span>Where is my order ORD-1002?</p>
+        <p class="cc-reply"><span class="cc-intent">order status</span>Order ORD-1002 is marked as Processing. Payment is confirmed and the order is being packed. Expected delivery: 2 November 2026.</p>
+      </div>
+      <div class="cc-turn">
+        <p class="cc-said"><span class="cc-who">Customer</span>How long does delivery take?</p>
+        <p class="cc-reply"><span class="cc-intent">faq</span>Standard delivery takes 3 to 5 working days after dispatch.</p>
+      </div>
+      <div class="cc-turn">
+        <p class="cc-said"><span class="cc-who">Customer</span>What is the weather in Karachi?</p>
+        <p class="cc-reply"><span class="cc-intent">fallback</span>Sorry, I didn't quite understand that. I can help with order status, business hours, delivery and returns questions, or connect you to a human representative.</p>
+      </div>
+      <div class="call-card-foot">
+        <span class="dot" aria-hidden="true"></span>
+        Escalated after three unrecognised turns &mdash; handoff summary attached
+      </div>
+    </div>
+  </section>
+
+  <section class="stat-band" aria-label="Project at a glance">
+    <div class="stat"><span class="stat-value">${TOTAL_TESTS}</span><span class="stat-label">Automated tests passing</span></div>
+    <div class="stat"><span class="stat-value">8</span><span class="stat-label">Supported intents</span></div>
+    <div class="stat"><span class="stat-value">12</span><span class="stat-label">Calls in the log</span></div>
+    <div class="stat"><span class="stat-value">3</span><span class="stat-label">Build stages delivered</span></div>
+  </section>
+
+  <section class="section">
+    <div class="live-band">
+      <div>
+        <p class="section-kicker">Live voice agent</p>
+        <h2>Talk to Sumyia in the browser</h2>
+        <p>Press the button, allow the microphone and speak in English.
+          Sumyia answers from the approved order and FAQ data, and the finished
+          call is saved to the dashboard with its transcript and outcome.</p>
+        <p class="live-band-note">Browser calls only: no phone number is connected.
+          Urdu and mixed-language speech are the next step. Audio is never stored.</p>
+      </div>
+      <div class="live-band-actions">
+        <button class="btn btn-live" type="button" data-action="talk">Talk to the agent</button>
+        <a class="btn btn-ghost" href="#/dashboard">See live calls</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <p class="section-kicker">Capabilities</p>
+      <h2>What the agent does</h2>
+      <p>Six behaviours make up the support flow, from reading the request to
+        saving the call for the team.</p>
+    </div>
+    <div class="feature-grid">${featureCards}</div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <p class="section-kicker">Timeline</p>
+      <h2>Built in three stages</h2>
+      <p>Each stage added one layer: the decision logic, then the conversation
+        and voice loop, then the business system and visibility.</p>
+    </div>
+    <div class="timeline">${timeline}</div>
+    <p style="margin:16px 0 0"><a class="link-arrow" href="#/journey">Read the full build journey</a></p>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <p class="section-kicker">Architecture</p>
+      <h2>How a call flows</h2>
+      <p>Six stages from the caller's sentence to the saved call record.</p>
+    </div>
+    <div class="arch-flow">${arch}</div>
+    <p style="margin:16px 0 0"><a class="link-arrow" href="#/how-it-works">Read the full architecture</a></p>
+  </section>
+
+  <section class="section">
+    <div class="grid-2">
+      <div class="panel">
+        <h2>Working today</h2>
+        <ul class="scope-list yes">
+          <li>Intent detection across eight intents, including empty input</li>
+          <li>Order status from five sample orders in the local CRM</li>
+          <li>Five approved FAQ topics plus business hours</li>
+          <li>Three-strike automatic escalation with a handoff summary</li>
+          <li>Local voice loop using Windows SAPI speech output</li>
+          <li>SQLite call log with transcripts and outcomes</li>
+          <li>Password-protected local dashboard and analytics</li>
+          <li>104 automated tests across all modules</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Not connected yet</h2>
+        <ul class="scope-list no">
+          <li>Real phone number and public telephony line</li>
+          <li>Live web calling, waiting for the hosting keys and a real test call</li>
+          <li>Urdu and mixed Urdu-English speech</li>
+          <li>Client CRM or order API (sample orders stand in)</li>
+          <li>Call recordings, audio storage and playback (not stored by design)</li>
+          <li>Production login with admin and viewer roles</li>
+          <li>Outbound calling, calling hours and a Do-Not-Call list</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band">
+    <div>
+      <h2>Explore the build</h2>
+      <p>The dashboard shows the call log and analytics. The journey page covers
+        each stage, and the testing page lists every suite and the captured results.</p>
+    </div>
+    <div class="cta-links">
+      <a class="btn btn-primary" href="#/dashboard">Dashboard</a>
+      <a class="btn btn-ghost" href="#/journey">Journey</a>
+      <a class="btn btn-ghost" href="#/testing">Testing</a>
+    </div>
+  </section>`;
+}
+
+/* ---------- Dashboard ---------- */
+
+function dashboardView() {
+  const outcomeEntries = ['transferred', 'closed', 'open']
+    .map((name) => [name, STATS.outcomes[name]]);
+  const intentEntries = Object.entries(STATS.intents)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const maxDay = Math.max(...STATS.days.map((day) => day.calls), 1);
+  const dayChart = STATS.days.map((day) => `
+    <div class="day-col" title="${day.calls} call(s) on ${day.day}">
+      <span class="day-value">${day.calls}</span>
+      <span class="day-bar" style="height:${Math.max(3, Math.round((day.calls / maxDay) * 110))}px"></span>
+      <span class="day-name">${formatDay(day.day)}</span>
+    </div>`).join('');
+
+  return `
+    <div class="page-head">
+      <div>
+        <h1>Dashboard</h1>
+        <p class="page-sub">Live browser calls next to the ${STATS.total} sample
+          records from 27 October to 2 November 2026. Every row says which kind it
+          is. No audio is recorded.</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-live" type="button" data-action="talk">Talk to the agent</button>
+      </div>
+    </div>
+
+    <section class="cards" aria-label="Key numbers">
+      <div class="card">
+        <div class="value">${STATS.total}</div>
+        <div class="label">Sample calls</div>
+        <div class="detail">27 Oct to 2 Nov 2026</div>
+      </div>
+      <div class="card">
+        <div class="value">${STATS.escalated}</div>
+        <div class="label">Transferred to a human</div>
+        <div class="detail">Requested or automatic handoff</div>
+      </div>
+      <div class="card">
+        <div class="value">${STATS.escalationRate}%</div>
+        <div class="label">Escalation rate</div>
+        <div class="detail">${STATS.escalated} of ${plural(STATS.total, 'call')}</div>
+      </div>
+      <div class="card">
+        <div class="value">${STATS.averageTurns}</div>
+        <div class="label">Average turns per call</div>
+        <div class="detail">${plural(STATS.totalTurns, 'turn')} in total</div>
+      </div>
+    </section>
+
+    ${liveCallsPanel()}
+
+    <section class="panel journey-strip" aria-labelledby="weeks-title">
+      <h2 id="weeks-title">Build stages</h2>
+      <ol class="week-chips">
+        <li><span class="week-tag">Stage 1</span><span>Text support prototype</span><span class="chip-note">27 tests</span></li>
+        <li><span class="week-tag">Stage 2</span><span>Knowledge base, session and voice loop</span><span class="chip-note">65 tests</span></li>
+        <li><span class="week-tag">Stage 3</span><span>CRM, call log and dashboard</span><span class="chip-note">104 tests</span></li>
+      </ol>
+      <p class="panel-note" style="margin:0">Live web calling runs on the browser
+        agent. A phone number is not connected. <a href="#/journey">See the full build journey</a>.</p>
+    </section>
+
+    <div class="grid-2">
+      <div>
+        <section class="panel" aria-labelledby="recent-title">
+          <div class="panel-head">
+            <h2 id="recent-title">Recent calls</h2>
+            ${sampleBadge()}
+          </div>
+          <p class="panel-note">Sample records, newest first. Open a call for its full text transcript.</p>
+          ${callsTable(SORTED_CALLS.slice(0, 6), 'No calls recorded yet.')}
+          <p style="margin:12px 0 0"><a class="link-arrow" href="#/calls">Open the full call log</a></p>
+        </section>
+
+        <section class="panel" aria-labelledby="intents-title">
+          <h2 id="intents-title">Intents across all turns</h2>
+          <p class="panel-note">Every customer turn is classified before the agent replies.</p>
+          ${intentEntries.length
+            ? barList(intentEntries, 'navy', (name) => name.replace(/_/g, ' '))
+            : '<div class="empty">No turns recorded yet.</div>'}
+        </section>
+      </div>
+
+      <div>
+        <section class="panel" aria-labelledby="outcomes-title">
+          <h2 id="outcomes-title">Outcomes</h2>
+          ${barList(outcomeEntries, 'warm')}
+        </section>
+
+        <section class="panel" aria-labelledby="days-title">
+          <h2 id="days-title">Calls per day</h2>
+          <p class="panel-note">Last seven days, UTC.</p>
+          <div class="day-chart" role="img" aria-label="Bar chart of calls per day for the last seven days">${dayChart}</div>
+        </section>
+
+        <section class="panel" aria-labelledby="data-title">
+          <h2 id="data-title">About this data</h2>
+          <p class="panel-note" style="margin:0">
+            Sample customer names, phone numbers, orders and transcripts fill the
+            ${STATS.total}-call log. Live browser calls are stored separately in the
+            hosted database and marked <strong>Live call</strong>. No telephony line
+            or audio recording is connected.
+          </p>
+        </section>
+      </div>
+    </div>`;
+}
+
+/* ---------- Calls ---------- */
+
+let activeFilter = 'all';
+
+function filteredCalls() {
+  return activeFilter === 'all'
+    ? SORTED_CALLS
+    : SORTED_CALLS.filter((call) => call.outcome === activeFilter);
+}
+
+function callsView() {
+  const filters = [
+    ['all', 'All', SORTED_CALLS.length],
+    ['transferred', 'Transferred', STATS.outcomes.transferred],
+    ['closed', 'Closed', STATS.outcomes.closed],
+    ['open', 'Open', STATS.outcomes.open],
+  ];
+  const chips = filters.map(([value, label, count]) => `
+    <button type="button" data-filter="${value}" class="${activeFilter === value ? 'active' : ''}">
+      ${label} <span class="bar-value">${count}</span>
+    </button>`).join('');
+  const calls = filteredCalls();
+  return `
+    <div class="page-head">
+      <div>
+        <h1>Call log</h1>
+        <p class="page-sub">Live browser calls first, then the saved sample calls.
+          Open any row for the full transcript.</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-live" type="button" data-action="talk">Talk to the agent</button>
+      </div>
+    </div>
+
+    ${liveCallsPanel()}
+
+    <section class="panel" aria-labelledby="sample-calls-title">
+      <div class="panel-head">
+        <h2 id="sample-calls-title">Sample calls</h2>
+        ${sampleBadge()}
+      </div>
+      <div class="filters" role="group" aria-label="Filter sample calls by outcome">${chips}</div>
+      ${callsTable(calls, 'No calls match this filter.')}
+    </section>`;
+}
+
+function detailView(callId) {
+  const call = CALLS.find((item) => item.id === callId);
+  if (!call) {
+    return `
+      <p class="back"><a href="#/calls">&larr; Back to the call log</a></p>
+      <h1>Call not found</h1>
+      <p class="page-sub">That call does not exist in this call log.</p>`;
+  }
+
+  const rows = call.turns.map((item, index) => `
+    <tr>
+      <td class="num">${index + 1}</td>
+      <td class="turn-message">${escapeHtml(item.message)}</td>
+      <td>${escapeHtml(item.intent)}${item.escalated ? '<span class="escalated-tag">escalated</span>' : ''}</td>
+      <td class="turn-reply">${escapeHtml(item.reply)}</td>
+    </tr>`).join('');
+
+  return `
+    <p class="back"><a href="#/calls">&larr; Back to the call log</a></p>
+    <div class="page-head">
+      <div class="call-head">
+        <h1>Call #${call.id}</h1>
+        ${badge(call.outcome)}
+      </div>
+      <p class="page-sub" style="margin:0">${formatTime(call.started_at)} to ${formatTime(call.ended_at)}</p>
+    </div>
+
+    <div class="note">
+      <strong>Audio:</strong> not recorded. Calls are simulated with typed customer
+      input, so this page holds the text transcript only.
+    </div>
+
+    <div class="detail-grid">
+      <section class="panel" aria-labelledby="facts-title">
+        <h2 id="facts-title">Call details</h2>
+        <dl class="facts">
+          <dt>Customer</dt><dd>${escapeHtml(call.customer_name || 'Unknown caller')}</dd>
+          <dt>Customer id</dt><dd class="phone">${escapeHtml(call.customer_id || '-')}</dd>
+          <dt>Caller number</dt><dd class="phone">${escapeHtml(call.caller_phone)}</dd>
+          <dt>Outcome</dt><dd>${badge(call.outcome)}</dd>
+          <dt>Escalated</dt><dd>${call.escalated ? 'Yes' : 'No'}</dd>
+          <dt>Started</dt><dd>${formatTime(call.started_at)}</dd>
+          <dt>Ended</dt><dd>${formatTime(call.ended_at)}</dd>
+          <dt>Summary</dt><dd>${escapeHtml(summarize(call))}</dd>
+        </dl>
+      </section>
+
+      <section class="panel" aria-labelledby="handoff-title">
+        <h2 id="handoff-title">Handoff note</h2>
+        <p class="panel-note" style="margin:0">
+          ${call.escalated
+            ? 'A human representative was requested or triggered automatically. The summary above is what the receiving colleague sees, so the customer does not have to repeat themselves.'
+            : 'No handoff was needed. The call ended without a transfer.'}
+        </p>
+      </section>
+    </div>
+
+    <section class="panel" aria-labelledby="transcript-title">
+      <h2 id="transcript-title">Transcript</h2>
+      <p class="panel-note">${plural(call.turns.length, 'customer turn')} in this call.</p>
+      <div class="table-wrap">
+        <table class="turns-table">
+          <thead><tr><th class="num">#</th><th>Customer</th><th>Intent</th><th>Agent reply</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
+/* ---------- Build journey ---------- */
+
+function journeyView() {
+  const cards = WEEKS.map((item) => `
+    <article class="week-card">
+      <div class="week-head">
+        <span class="week-tag">${escapeHtml(item.week)}</span>
+        <span class="week-date">${escapeHtml(item.date)}</span>
+      </div>
+      <h2 class="week-title">${escapeHtml(item.title)}</h2>
+      <ul>${item.points.map((point) => `<li>${escapeHtml(point)}</li>`).join('')}</ul>
+      <div class="week-links"><a href="${escapeHtml(item.link.href)}">${escapeHtml(item.link.label)} &rarr;</a></div>
+      <div class="week-foot">
+        <span class="status done">Delivered</span>
+        <span>${escapeHtml(item.evidence)}</span>
+      </div>
+      <p class="week-pending">Pending access: ${escapeHtml(item.pending)}</p>
+    </article>`).join('');
+
+  const nextSteps = [
+    'Connect a telephony provider and provision one voice-capable test number.',
+    'Replace typed input with streaming speech-to-text.',
+    'Run the first live test call and measure end-to-end latency.',
+    'Add barge-in handling and call recording with a caller notice.',
+    'Connect the client CRM or order API in place of the sample database.',
+    'Replace the local login with production authentication and TLS.',
+  ].map((step) => `<li class="step-text" style="padding:6px 0">${escapeHtml(step)}</li>`).join('');
+
+  const accessRows = [
+    ['Telephony account (Twilio, Telnyx or Plivo)', 'Place and receive calls'],
+    ['Account SID and auth token, stored as environment variables', 'Authenticate API requests'],
+    ['One voice-capable phone number', 'Caller ID and inbound calls'],
+    ['One verified test destination number', 'Test calls on trial accounts'],
+    ['Public HTTPS webhook (ngrok during development)', 'Receive call events'],
+    ['Speech-to-text API key (Deepgram or Whisper)', 'Transcribe customer speech'],
+    ['Text-to-speech API key (ElevenLabs or Azure)', 'Speak the agent replies'],
+    ['Approved recording notice, calling hours and Do-Not-Call policy', 'Compliance before any live call'],
+  ].map(([item, purpose]) => `<tr><td>${escapeHtml(item)}</td><td>${escapeHtml(purpose)}</td></tr>`).join('');
+
+  return `
+    <div class="page-head">
+      <div>
+        <h1>Build journey</h1>
+        <p class="page-sub">What each build stage delivered, how it was tested and
+          what still needs external access. Everything runs locally as a simulated
+          agent; no live phone call has been made.</p>
+      </div>
+    </div>
+
+    <div class="week-grid" style="margin-top:24px">${cards}</div>
+
+    <section class="panel" style="margin-top:22px" aria-labelledby="next-title">
+      <h2 id="next-title">Next steps</h2>
+      <p class="panel-note">The remaining work depends on accounts and access that
+        are not available in this environment.</p>
+      <ul style="margin:0;padding-left:20px;font-size:13.5px">${nextSteps}</ul>
+    </section>
+
+    <div class="grid-2" style="margin-top:18px">
+      <section class="panel" aria-labelledby="access-title">
+        <h2 id="access-title">Access required for a live call</h2>
+        <p class="panel-note">Each item is needed before the first real call.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Access</th><th>Purpose</th></tr></thead>
+            <tbody>${accessRows}</tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="blocked-title">
+        <h2 id="blocked-title">Still blocked</h2>
+        <p class="panel-note" style="margin:0">
+          The live phone call is not part of the build. No telephony account, test
+          number, webhook or speech-recognition service is connected, so the agent
+          has never taken a real call. Typed input stands in for speech recognition
+          and Windows SAPI speaks the replies.
+        </p>
+      </section>
+    </div>`;
+}
+
+/* ---------- How it works ---------- */
+
+function howItWorksView() {
+  const steps = [
+    ['Reception', 'The caller sentence arrives as text in this build. Typed input stands in for the microphone and speech recognition.'],
+    ['Intent detection', 'Phrase rules classify the turn: greeting, order status, business hours, FAQ, handoff, goodbye, fallback or empty.'],
+    ['Approved data', 'Orders come from the SQLite CRM. Hours and FAQ answers come from validated knowledge-base entries, so the agent does not invent answers.'],
+    ['Session policy', 'A per-call session counts failed turns. Three in a row, or any direct request, triggers a handoff and prepares a summary.'],
+    ['Spoken reply', 'A short sentence is spoken through Windows SAPI, or printed when no voice is available.'],
+    ['Persistence', 'The finished call is written to the CRM and call log with transcript, outcome, caller and handoff note.'],
+    ['Visibility', 'The dashboard reads the call log to show volume, escalation rate, intents and average turns.'],
+  ].map(([title, text], index) => `
+    <li class="step">
+      <span class="step-num">${index + 1}</span>
+      <span>
+        <span class="step-title">${escapeHtml(title)}</span>
+        <span class="step-text">${escapeHtml(text)}</span>
+      </span>
+    </li>`).join('');
+
+  const intentRows = INTENTS.map(([name, example, behavior]) => `
+    <tr>
+      <td class="phone">${escapeHtml(name)}</td>
+      <td>${escapeHtml(example)}</td>
+      <td>${escapeHtml(behavior)}</td>
+    </tr>`).join('');
+
+  const dataRows = [
+    ['customers', 'Customer id, name, phone and notes for the sample callers.'],
+    ['orders', 'Order number, status, expected delivery and tracking number.'],
+    ['interactions', 'Customer-linked notes created during support work.'],
+    ['calls', 'One row per finished call: caller, start, end, outcome and escalation.'],
+    ['call_turns', 'Each customer message with its intent, reply and escalation flag.'],
+  ].map(([name, purpose]) => `<tr><td class="phone">${escapeHtml(name)}</td><td>${escapeHtml(purpose)}</td></tr>`).join('');
+
+  const stackRows = [
+    ['Language', 'Python 3.12 (3.10+), standard library only at runtime'],
+    ['Tests', 'unittest, also runs under pytest — 104 tests'],
+    ['Storage', 'SQLite via sqlite3: one CRM database and one call-log database'],
+    ['Dashboard server', 'http.server on loopback with a hashed password check'],
+    ['Voice output', 'Windows SAPI through PowerShell; printed fallback elsewhere'],
+    ['This site', 'Plain HTML, CSS and JavaScript with hash routing, no build step'],
+    ['Reports', 'python-docx generator scripts with a shared black and navy theme'],
+  ].map(([layer, tech]) => `<tr><td>${escapeHtml(layer)}</td><td>${escapeHtml(tech)}</td></tr>`).join('');
+
+  return `
+    <div class="page-head">
+      <div>
+        <h1>How it works</h1>
+        <p class="page-sub">The pipeline, the eight intents, the escalation rules,
+          the data model and the safety limits of the local build.</p>
+      </div>
+    </div>
+
+    <section class="section" style="margin-top:26px">
+      <div class="section-head">
+        <p class="section-kicker">Pipeline</p>
+        <h2>From sentence to saved call</h2>
+      </div>
+      <ol class="steps">${steps}</ol>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <p class="section-kicker">Intents</p>
+        <h2>What the agent understands</h2>
+        <p>Anything outside these categories becomes a fallback, and repeated
+          fallbacks lead to a human.</p>
+      </div>
+      <div class="panel" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Intent</th><th>Example</th><th>Response</th></tr></thead>
+            <tbody>${intentRows}</tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="grid-2">
+        <div class="panel">
+          <h2>Escalation rules</h2>
+          <ul class="scope-list yes">
+            <li>A direct request such as "can I speak to a human" transfers immediately.</li>
+            <li>Three failed turns in a row trigger an automatic transfer.</li>
+            <li>Empty input counts as a failed turn.</li>
+            <li>Once escalated, the session stops trying to answer and prepares the handoff.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h2>Handoff summary</h2>
+          <p class="panel-note" style="margin:0">
+            The summary lists the customer, the number of turns, the topics that
+            came up and the reason for the transfer. It is attached to the saved
+            call so the receiving colleague can continue without making the caller
+            repeat everything.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <p class="section-kicker">Data</p>
+        <h2>Local data model</h2>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <h2>SQLite tables</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Table</th><th>Holds</th></tr></thead>
+              <tbody>${dataRows}</tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Dashboard safety</h2>
+          <ul class="scope-list yes">
+            <li>Binds to loopback only by default</li>
+            <li>Password checked with a constant-time comparison</li>
+            <li>HttpOnly and SameSite=Strict session cookie</li>
+            <li>All rendered values are HTML-escaped</li>
+            <li>Request bodies are capped at 4 KB</li>
+            <li>Sessions live in memory; restarting signs everyone out</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <p class="section-kicker">Stack</p>
+        <h2>Built with</h2>
+      </div>
+      <div class="panel" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Layer</th><th>Technology</th></tr></thead>
+            <tbody>${stackRows}</tbody>
+          </table>
+        </div>
+      </div>
+    </section>`;
+}
+
+/* ---------- Testing ---------- */
+
+function testingView() {
+  const suites = [
+    ['test_agent.py', 'Intents, replies, order validation and escalation flags', 27],
+    ['test_knowledge_base.py', 'Approved FAQ entries, lookup and unknown topics', 14],
+    ['test_session.py', 'Per-call state, three-strike rule and handoff summary', 12],
+    ['test_voice_pipeline.py', 'Speech interfaces, pipeline order and escalation', 12],
+    ['test_crm.py', 'Customers, orders, interactions and seed data', 10],
+    ['test_call_store.py', 'Saved calls, transcripts and analytics', 10],
+    ['test_dashboard.py', 'Login, pages, filters, escaping and logout', 19],
+  ].map(([file, covers, count]) => `
+    <tr>
+      <td class="phone">${escapeHtml(file)}</td>
+      <td>${escapeHtml(covers)}</td>
+      <td class="num">${count}</td>
+    </tr>`).join('');
+
+  const downloads = [
+    ['Stage 1', 'WEEK1_DEVELOPMENT_DOCUMENT.docx', 'Discovery, intents, prototype'],
+    ['Stage 2', 'WEEK2_DEVELOPMENT_DOCUMENT.docx', 'Knowledge base, session, voice loop'],
+    ['Stage 3', 'WEEK3_DEVELOPMENT_DOCUMENT.docx', 'CRM, call log, dashboard'],
+  ].map(([stage, file, meta]) => `
+    <a class="download" href="${file}" download>
+      <span class="file-tag">DOCX</span>
+      <strong>${escapeHtml(stage)} report</strong>
+      <span class="download-meta">${escapeHtml(meta)}</span>
+    </a>`).join('');
+
+  return `
+    <div class="page-head">
+      <div>
+        <h1>Testing</h1>
+        <p class="page-sub">Seven test suites, ${TOTAL_TESTS} tests and a live HTTP
+          check of the dashboard. The results below were captured from the local
+          build, not from this static site.</p>
+      </div>
+    </div>
+
+    <section class="cards" aria-label="Test totals">
+      <div class="card">
+        <div class="value">${TOTAL_TESTS}</div>
+        <div class="label">Tests passing</div>
+        <div class="detail">Run on Python 3.12.10</div>
+      </div>
+      <div class="card">
+        <div class="value">7</div>
+        <div class="label">Test suites</div>
+        <div class="detail">Agent, knowledge, session, voice, CRM, log, dashboard</div>
+      </div>
+      <div class="card">
+        <div class="value">0</div>
+        <div class="label">Failures</div>
+        <div class="detail">Last full run: OK</div>
+      </div>
+      <div class="card">
+        <div class="value">19</div>
+        <div class="label">Dashboard HTTP checks</div>
+        <div class="detail">Login, pages, filters, escaping, logout</div>
+      </div>
+    </section>
+
+    <section class="section" style="margin-top:8px">
+      <div class="section-head">
+        <p class="section-kicker">Coverage</p>
+        <h2>What each suite checks</h2>
+      </div>
+      <div class="panel" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Suite</th><th>Covers</th><th class="num">Tests</th></tr></thead>
+            <tbody>${suites}</tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="grid-2">
+        <div class="panel">
+          <h2>Run the suites</h2>
+          <p class="panel-note">From the project root, with no third-party packages:</p>
+          <pre class="code">python -m unittest discover -s tests -t . -v</pre>
+          <h2 style="margin-top:16px">Run the agent</h2>
+          <pre class="code">python -m src.cli --demo
+python -m src.voice.demo --silent
+python -m src.dashboard</pre>
+        </div>
+        <div class="panel">
+          <h2>Captured evidence</h2>
+          <ul class="scope-list yes">
+            <li>Full test output: 104 tests, 0 failures</li>
+            <li>Dashboard HTTP check: 19 of 19 passed</li>
+            <li>Static site check: 13 of 13 rendering checks passed</li>
+            <li>Simulated call transcripts saved across all three stages</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <p class="section-kicker">Reports</p>
+        <h2>Development reports</h2>
+        <p>Each report covers that stage's scope, implementation, tests and the
+          access that is still pending.</p>
+      </div>
+      <div class="downloads">${downloads}</div>
+    </section>
+
+    <section class="callout" style="margin-top:22px">
+      <h2>Not covered by these tests</h2>
+      <p>Live telephony, streaming speech recognition, a real client CRM and call
+        recordings are not connected, so there are no automated tests for them.
+        The suite covers the decision layer, the session rules, the voice-pipeline
+        interfaces, the local database and the dashboard server.</p>
+    </section>`;
+}
+
+/* ---------- Routing ---------- */
+
+const main = $('#main');
+
+const TITLES = {
+  home: 'AI Customer Calling Agent',
+  dashboard: 'Dashboard — AI Customer Calling Agent',
+  calls: 'Call log — AI Customer Calling Agent',
+  journey: 'Build journey — AI Customer Calling Agent',
+  how: 'How it works — AI Customer Calling Agent',
+  testing: 'Testing — AI Customer Calling Agent',
+};
+
+function setActiveNav(routeName) {
+  document.querySelectorAll('nav a[data-nav]').forEach((link) => {
+    const active = link.dataset.nav === routeName;
+    link.classList.toggle('active', active);
+    if (active) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
+}
+
+function route() {
+  const hash = (window.location.hash || '#/').replace(/\/$/, '') || '#/';
+  const match = hash.match(/^#\/calls\/(\d+)$/);
+  const liveMatch = hash.match(/^#\/live\/([0-9a-f-]{36})$/i);
+  let view = 'home';
+  let html;
+  let title = TITLES.home;
+
+  if (match) {
+    html = detailView(Number(match[1]));
+    view = 'calls';
+    title = `Call #${match[1]} — AI Customer Calling Agent`;
+  } else if (liveMatch) {
+    html = liveDetailView(liveMatch[1]);
+    view = 'calls';
+    title = 'Live call — AI Customer Calling Agent';
+  } else if (hash === '#/calls') {
+    html = callsView();
+    view = 'calls';
+  } else if (hash === '#/dashboard') {
+    html = dashboardView();
+    view = 'dashboard';
+  } else if (hash === '#/journey') {
+    html = journeyView();
+    view = 'journey';
+  } else if (hash === '#/how-it-works') {
+    html = howItWorksView();
+    view = 'how';
+  } else if (hash === '#/testing') {
+    html = testingView();
+    view = 'testing';
+  } else {
+    html = homeView();
+  }
+
+  main.innerHTML = html;
+  setActiveNav(view);
+  document.title = match || liveMatch ? title : TITLES[view];
+  window.scrollTo({ top: 0, behavior: 'auto' });
+  main.focus({ preventScroll: true });
+
+  if (liveMatch) loadLiveDetail(liveMatch[1]);
+  else if (view === 'dashboard' || view === 'calls') loadLiveCalls();
+}
+
+main.addEventListener('click', (event) => {
+  const chip = event.target.closest('[data-filter]');
+  if (!chip) return;
+  activeFilter = chip.dataset.filter;
+  main.innerHTML = callsView();
+  const pressed = $(`[data-filter="${activeFilter}"]`, main);
+  if (pressed) pressed.focus();
+  loadLiveCalls();
+});
+
+document.addEventListener('click', (event) => {
+  if (!(event.target instanceof Element)) return;
+  if (event.target.closest('[data-action="talk"]')) {
+    startLiveCall();
+    return;
+  }
+  if (event.target.closest('#call-mute')) {
+    toggleMute();
+    return;
+  }
+  if (event.target.closest('#call-end')) {
+    stopLiveCall();
+    return;
+  }
+  if (event.target.closest('#call-close')) {
+    closeDock();
+  }
+});
+
+window.addEventListener('hashchange', route);
+window.addEventListener('DOMContentLoaded', route);
+
+route();
