@@ -1785,7 +1785,8 @@ function setupView() {
           <h2 id="setup-keys-title">1. Environment variables</h2>
         </div>
         <p class="panel-note">Set these in the hosting project, then redeploy. Values are
-          entered there, never in this site or the repository.</p>
+          entered there, never in this site or the repository. A saved change takes effect
+          only after the newest deployment is rebuilt.</p>
         <pre class="code">VAPI_PUBLIC_KEY
 VAPI_PRIVATE_KEY
 VAPI_SERVER_SECRET
