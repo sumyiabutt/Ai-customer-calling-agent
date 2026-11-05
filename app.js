@@ -404,6 +404,25 @@ const WEEKS = [
     pending: 'Real client CRM API, call recordings and production authentication.',
     link: { label: 'Open the dashboard', href: '#/dashboard' },
   },
+  {
+    week: 'Stage 4',
+    date: '5 November 2026',
+    title: 'Live voice agent',
+    summary:
+      'A browser voice call through Vapi, webhook tools that read the approved ' +
+      'orders and FAQs, and finished calls saved to a hosted database.',
+    points: [
+      'Vapi assistant created from code with five approved tools',
+      'Webhook with secret verification for order status, FAQ, hours, handoff and outcome',
+      'Browser call dock with live transcript, mute and end call',
+      'Live calls written to Supabase and labelled separately from sample data',
+      'Card and CNIC patterns masked before saving; no audio is stored',
+      '18 offline API checks in place of a live test call',
+    ],
+    evidence: '18 API checks',
+    pending: 'First real test call: the hosted API keys and Vercel deployment are still pending.',
+    link: { label: 'Live calls in the dashboard', href: '#/dashboard' },
+  },
 ];
 
 const INTENTS = [
@@ -749,8 +768,8 @@ function ensureDock() {
     <p class="dock-note" id="call-note">Allow microphone access when the browser asks.</p>
     <div class="dock-transcript" id="call-transcript"></div>
     <div class="dock-actions">
-      <button class="btn btn-primary" id="call-mute" type="button" aria-pressed="false">Mute</button>
-      <button class="btn btn-ghost" id="call-end" type="button">End call</button>
+      <button class="btn btn-primary" id="call-mute" type="button" aria-pressed="false" hidden>Mute</button>
+      <button class="btn btn-ghost" id="call-end" type="button" hidden>End call</button>
       <button class="btn btn-ghost" id="call-close" type="button">Close</button>
     </div>`;
   document.body.appendChild(node);
@@ -767,6 +786,13 @@ function setDockStatus(text, tone) {
 function setDockNote(text) {
   const note = document.getElementById('call-note');
   if (note) note.textContent = text;
+}
+
+function setCallControls(active) {
+  const mute = document.getElementById('call-mute');
+  const end = document.getElementById('call-end');
+  if (mute) mute.hidden = !active;
+  if (end) end.hidden = !active;
 }
 
 function appendDockTurn(speaker, text) {
@@ -798,25 +824,31 @@ function stopDockTimer() {
 }
 
 async function startLiveCall() {
+  if (dock.busy) return;
+  dock.busy = true;
+
   const node = ensureDock();
   node.hidden = false;
   const transcript = document.getElementById('call-transcript');
   if (transcript) transcript.innerHTML = '';
-  setDockNote('Allow microphone access when the browser asks.');
-  setDockStatus('Connecting\u2026', 'warn');
+  setCallControls(false);
+  setDockNote('Checking the live voice setup\u2026');
+  setDockStatus('Checking', 'warn');
 
-  if (dock.busy) return;
-  dock.busy = true;
   try {
     const config = await fetchJson(`${VOICE_API}/config`);
     if (!config.configured) {
-      setDockStatus('Not configured', 'warn');
+      setDockStatus('Setup needed', 'warn');
       setDockNote(
-        'Live calling needs the Vapi and Supabase keys in the hosting environment. ' +
-        'The dashboard still shows sample data.'
+        'Live calls are not switched on yet: the Vapi and Supabase keys are missing ' +
+        'from the hosting environment. Nothing was recorded and the dashboard still ' +
+        'shows sample data.'
       );
       return;
     }
+
+    setDockStatus('Connecting\u2026', 'warn');
+    setDockNote('Allow microphone access when the browser asks.');
 
     const module = await import('https://esm.sh/@vapi-ai/web@2');
     const Vapi = module.default || module.Vapi;
@@ -824,6 +856,7 @@ async function startLiveCall() {
     dock.vapi = vapi;
 
     vapi.on('call-start', () => {
+      setCallControls(true);
       setDockStatus('Live \u00b7 0:00', 'live');
       setDockNote('You are speaking with Sumyia, an AI assistant. This call is transcribed.');
       startDockTimer();
@@ -840,11 +873,13 @@ async function startLiveCall() {
       }
     });
     vapi.on('error', (error) => {
+      setCallControls(false);
       setDockStatus('Call error', 'warn');
       setDockNote((error && (error.message || error.errorMsg)) || 'The call could not start.');
     });
     vapi.on('call-end', () => {
       stopDockTimer();
+      setCallControls(false);
       setDockStatus('Call ended', '');
       setDockNote('Transcript saving to the dashboard\u2026');
       dock.vapi = null;
@@ -879,6 +914,7 @@ function stopLiveCall() {
     dock.vapi = null;
   }
   stopDockTimer();
+  setCallControls(false);
   setDockStatus('Call ended', '');
 }
 
@@ -927,12 +963,12 @@ function homeView() {
     </div>`).join('');
 
   const arch = [
-    ['01', 'Speech in', 'Typed input stands in for the microphone in this build.'],
+    ['01', 'Speech in', 'The caller speaks in the browser; Vapi handles the microphone, speech recognition and the reply.'],
     ['02', 'Intent', 'The sentence is classified into one of eight intents.'],
-    ['03', 'Data lookup', 'Orders from the CRM; hours and FAQs from the knowledge base.'],
+    ['03', 'Data lookup', 'Orders, hours and FAQs are read through tools from the approved tables.'],
     ['04', 'Session policy', 'Failed turns are counted; a handoff summary is prepared.'],
-    ['05', 'Voice reply', 'A short approved sentence, spoken or printed.'],
-    ['06', 'Record', 'The call and its transcript are written to SQLite.'],
+    ['05', 'Voice reply', 'Vapi speaks a short approved sentence back to the caller.'],
+    ['06', 'Record', 'The finished call is written to the hosted call log and shown in the dashboard.'],
   ].map(([num, title, note]) => `
     <div class="arch-step">
       <span class="arch-num">${num}</span>
@@ -953,7 +989,7 @@ function homeView() {
         <a class="btn btn-ghost" href="#/dashboard">Open the dashboard</a>
         <a class="btn btn-ghost" href="#/how-it-works">See how it works</a>
       </div>
-      <p class="hero-meta">Vapi voice agent &middot; hosted call log &middot; English voice &middot; 104 automated tests</p>
+      <p class="hero-meta">Vapi voice agent &middot; hosted call log &middot; English voice &middot; 104 tests + 18 API checks</p>
     </div>
 
     <div class="call-card" aria-label="Sample call excerpt">
@@ -1021,9 +1057,9 @@ function homeView() {
   <section class="section">
     <div class="section-head">
       <p class="section-kicker">Timeline</p>
-      <h2>Built in three stages</h2>
-      <p>Each stage added one layer: the decision logic, then the conversation
-        and voice loop, then the business system and visibility.</p>
+      <h2>Built in four stages</h2>
+      <p>Each stage added one layer: the decision logic, the conversation and
+        local voice loop, the business system, then the live voice agent.</p>
     </div>
     <div class="timeline">${timeline}</div>
     <p style="margin:16px 0 0"><a class="link-arrow" href="#/journey">Read the full build journey</a></p>
@@ -1045,20 +1081,20 @@ function homeView() {
         <h2>Working today</h2>
         <ul class="scope-list yes">
           <li>Intent detection across eight intents, including empty input</li>
-          <li>Order status from five sample orders in the local CRM</li>
+          <li>Order status from five approved sample orders</li>
           <li>Five approved FAQ topics plus business hours</li>
           <li>Three-strike automatic escalation with a handoff summary</li>
-          <li>Local voice loop using Windows SAPI speech output</li>
-          <li>SQLite call log with transcripts and outcomes</li>
-          <li>Password-protected local dashboard and analytics</li>
-          <li>104 automated tests across all modules</li>
+          <li>Vapi browser voice call wired to the approved-data tools</li>
+          <li>Hosted call log wired to the dashboard, labelled separately from sample data</li>
+          <li>Admin dashboard with sample calls, transcript view and analytics</li>
+          <li>104 automated tests and 18 offline API checks</li>
         </ul>
       </div>
       <div class="panel">
         <h2>Not connected yet</h2>
         <ul class="scope-list no">
           <li>Real phone number and public telephony line</li>
-          <li>Live web calling, waiting for the hosting keys and a real test call</li>
+          <li>First live test call: the Vercel API and Vapi/Supabase keys are not deployed yet</li>
           <li>Urdu and mixed Urdu-English speech</li>
           <li>Client CRM or order API (sample orders stand in)</li>
           <li>Call recordings, audio storage and playback (not stored by design)</li>
@@ -1328,23 +1364,23 @@ function journeyView() {
     </article>`).join('');
 
   const nextSteps = [
-    'Connect a telephony provider and provision one voice-capable test number.',
-    'Replace typed input with streaming speech-to-text.',
-    'Run the first live test call and measure end-to-end latency.',
-    'Add barge-in handling and call recording with a caller notice.',
+    'Set the Vercel environment keys and deploy the API functions.',
+    'Run the first live test calls: order status, FAQ and escalation, with latency measured.',
+    'Add Urdu and mixed Urdu-English speech.',
+    'Put server-side admin and viewer login in front of the live-call API.',
     'Connect the client CRM or order API in place of the sample database.',
-    'Replace the local login with production authentication and TLS.',
+    'Add appointments, outbound calling with calling hours, and a Do-Not-Call list.',
   ].map((step) => `<li class="step-text" style="padding:6px 0">${escapeHtml(step)}</li>`).join('');
 
   const accessRows = [
-    ['Telephony account (Twilio, Telnyx or Plivo)', 'Place and receive calls'],
-    ['Account SID and auth token, stored as environment variables', 'Authenticate API requests'],
-    ['One voice-capable phone number', 'Caller ID and inbound calls'],
-    ['One verified test destination number', 'Test calls on trial accounts'],
-    ['Public HTTPS webhook (ngrok during development)', 'Receive call events'],
-    ['Speech-to-text API key (Deepgram or Whisper)', 'Transcribe customer speech'],
-    ['Text-to-speech API key (ElevenLabs or Azure)', 'Speak the agent replies'],
-    ['Approved recording notice, calling hours and Do-Not-Call policy', 'Compliance before any live call'],
+    ['Vapi public and private keys', 'Create the assistant and start the browser call'],
+    ['Supabase project URL and service-role key', 'Hosted order, FAQ and call tables'],
+    ['Vercel environment variables', 'Keep server keys out of the browser and repository'],
+    ['Vapi webhook secret', 'Prove that each tool call comes from Vapi'],
+    ['Setup token', 'Protect the one-time assistant creation endpoint'],
+    ['Supabase schema script, run once', 'Create the tables and the sample orders and FAQs'],
+    ['Microphone permission', 'Speak to the agent in the browser'],
+    ['Approved content and a caller notice', 'Replace sample data before any client call'],
   ].map(([item, purpose]) => `<tr><td>${escapeHtml(item)}</td><td>${escapeHtml(purpose)}</td></tr>`).join('');
 
   return `
@@ -1381,10 +1417,9 @@ function journeyView() {
       <section class="panel" aria-labelledby="blocked-title">
         <h2 id="blocked-title">Still blocked</h2>
         <p class="panel-note" style="margin:0">
-          The live phone call is not part of the build. No telephony account, test
-          number, webhook or speech-recognition service is connected, so the agent
-          has never taken a real call. Typed input stands in for speech recognition
-          and Windows SAPI speaks the replies.
+          No phone line is connected and no real call has been made yet. The
+          browser call is built on Vapi and the hosted call log on Supabase, but
+          the Vercel API, the keys and the first test call are still pending.
         </p>
       </section>
     </div>`;
@@ -1394,12 +1429,12 @@ function journeyView() {
 
 function howItWorksView() {
   const steps = [
-    ['Reception', 'The caller sentence arrives as text in this build. Typed input stands in for the microphone and speech recognition.'],
+    ['Reception', 'The caller speaks in the browser. Vapi handles the microphone, speech recognition and the spoken reply.'],
     ['Intent detection', 'Phrase rules classify the turn: greeting, order status, business hours, FAQ, handoff, goodbye, fallback or empty.'],
-    ['Approved data', 'Orders come from the SQLite CRM. Hours and FAQ answers come from validated knowledge-base entries, so the agent does not invent answers.'],
+    ['Approved data', 'Orders and FAQs come from the approved tables. Live calls read Supabase; the sample dashboard reads bundled sample calls.'],
     ['Session policy', 'A per-call session counts failed turns. Three in a row, or any direct request, triggers a handoff and prepares a summary.'],
-    ['Spoken reply', 'A short sentence is spoken through Windows SAPI, or printed when no voice is available.'],
-    ['Persistence', 'The finished call is written to the CRM and call log with transcript, outcome, caller and handoff note.'],
+    ['Spoken reply', 'Vapi speaks a short approved sentence; the call dock shows the transcript as the call runs.'],
+    ['Persistence', 'The end-of-call report is saved to the hosted call log with transcript, summary, outcome and duration. No audio is stored.'],
     ['Visibility', 'The dashboard reads the call log to show volume, escalation rate, intents and average turns.'],
   ].map(([title, text], index) => `
     <li class="step">
@@ -1426,11 +1461,11 @@ function howItWorksView() {
   ].map(([name, purpose]) => `<tr><td class="phone">${escapeHtml(name)}</td><td>${escapeHtml(purpose)}</td></tr>`).join('');
 
   const stackRows = [
-    ['Language', 'Python 3.12 (3.10+), standard library only at runtime'],
-    ['Tests', 'unittest, also runs under pytest — 104 tests'],
-    ['Storage', 'SQLite via sqlite3: one CRM database and one call-log database'],
-    ['Dashboard server', 'http.server on loopback with a hashed password check'],
-    ['Voice output', 'Windows SAPI through PowerShell; printed fallback elsewhere'],
+    ['Prototype', 'Python 3.12 (3.10+) with the standard library; 104 tests'],
+    ['Voice', 'Vapi: Deepgram speech recognition, an OpenAI assistant model and a Vapi voice'],
+    ['API', 'Node.js serverless functions on Vercel, with the webhook secret checked on every call'],
+    ['Hosted data', 'Supabase Postgres: orders, faqs, live_calls, handoffs and settings'],
+    ['Sample data', 'SQLite CRM and call log behind the Python prototype and the sample records'],
     ['This site', 'Plain HTML, CSS and JavaScript with hash routing, no build step'],
     ['Reports', 'python-docx generator scripts with a shared black and navy theme'],
   ].map(([layer, tech]) => `<tr><td>${escapeHtml(layer)}</td><td>${escapeHtml(tech)}</td></tr>`).join('');
@@ -1495,11 +1530,14 @@ function howItWorksView() {
     <section class="section">
       <div class="section-head">
         <p class="section-kicker">Data</p>
-        <h2>Local data model</h2>
+        <h2>Data model</h2>
       </div>
       <div class="grid-2">
         <div class="panel">
-          <h2>SQLite tables</h2>
+          <h2>Sample database tables</h2>
+          <p class="panel-note">These SQLite tables back the sample dashboard. Live
+            calls use the Supabase tables: orders, faqs, live_calls, handoffs and
+            settings.</p>
           <div class="table-wrap">
             <table>
               <thead><tr><th>Table</th><th>Holds</th></tr></thead>
@@ -1631,7 +1669,8 @@ python -m src.dashboard</pre>
             <li>Full test output: 104 tests, 0 failures</li>
             <li>Dashboard HTTP check: 19 of 19 passed</li>
             <li>Static site check: 13 of 13 rendering checks passed</li>
-            <li>Simulated call transcripts saved across all three stages</li>
+            <li>Simulated call transcripts saved for the sample stages</li>
+            <li>Step A API check: 18 of 18 passed with stubbed services</li>
           </ul>
         </div>
       </div>
