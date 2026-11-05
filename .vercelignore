@@ -1,0 +1,3 @@
+# Python CLI, tests and build scripts are not part of the deployed site
+*.py
+requirements*.txt
