@@ -1,4 +1,4 @@
-# AI Customer Calling Agent — Weeks 1–3
+# AI Customer Calling Agent
 
 A working prototype of the customer-support calling agent described in
 `AI_Customer_Calling_Agent_Development_Plan.docx`. Week 1 delivers the decision
@@ -10,15 +10,21 @@ Windows voice (or printed when no voice is available). Week 3 connects a local
 SQLite CRM and call log, saves every finished simulated call, and serves a
 password-protected local dashboard with call logs, transcripts and analytics.
 
-**This is not a live phone agent yet.** No phone line, microphone or
-speech-recognition engine is connected. The "customer" text is typed or supplied
-by the demo script; it is not a transcript of real audio. The CRM holds
-fictional sample customers, and the dashboard shows the text transcript only —
-there are no call recordings.
+**No phone line is connected.** A real browser voice agent is now built: Vapi
+handles the microphone, speech recognition, the language model and the spoken
+reply, and every finished web call is saved through the Vercel API to a hosted
+Supabase Postgres database. The live call is not claimed as verified until the
+Vercel environment keys are set and the test calls below are run.
+
+The earlier Weeks 1–3 prototype still holds the approved order and FAQ data,
+the three-strike escalation rule and the call-log format. Its CRM holds fictional
+sample customers, and the dashboard shows text transcripts only — there are no
+call recordings.
 
 Weeks 1–3 of the four-week plan are delivered and tested (104 automated tests).
-Week 4 — telephony, pilot and handover — is listed under next steps, because it
-depends on accounts and access this environment does not have.
+Week 4 work is being added in the order: live web call, language and barge-in,
+authentication and hosted data, appointments, outbound calling, then KPIs and
+reports. See [Live voice agent (Step A)](#live-voice-agent-step-a).
 
 ## Live project website
 
@@ -41,9 +47,109 @@ Stage 1–3 on the site):
 - **Testing** — seven suites, 104 tests, captured evidence and the three weekly
   reports as DOCX downloads.
 
-All customer names, orders and calls are fictional sample data; call #1
-reproduces the captured Week 3 demo run. The hosted site has no backend,
-telephony, CRM API or audio.
+All customer names, orders and sample calls are fictional; call #1 reproduces
+the captured Week 3 demo run. Live web calls are shown separately and labelled
+**Live call**. With no Vapi or Supabase keys in the hosting environment, the
+live panel says so and the rest of the site keeps working from sample data.
+
+---
+
+## Live voice agent (Step A)
+
+The website can start a real browser call with a microphone. Vapi runs speech
+recognition (Deepgram), the assistant model (OpenAI) and text-to-speech, then
+calls the same backend that holds the approved order and FAQ data. When the call
+ends, the transcript, summary, duration and outcome are written to Supabase and
+appear in the dashboard.
+
+### Files
+
+| File | Purpose |
+| --- | --- |
+| `supabase/schema.sql` | Tables `orders`, `faqs`, `live_calls`, `handoffs`, `settings`, plus sample orders and FAQs |
+| `web/api/config.js` | Returns the Vapi public key and assistant id to the browser |
+| `web/api/setup.js` | Creates or updates the Vapi assistant (token-protected) and stores its id |
+| `web/api/vapi.js` | Vapi webhook: tool calls and end-of-call reports, with secret verification |
+| `web/api/calls.js` | Reads live calls for the dashboard and call detail |
+| `web/api/_assistant.js` | ShopEasy/Sumyia first message, system prompt and tool definitions |
+| `web/api/_lib.js` | Supabase REST helper, response helper and card/CNIC masking |
+| `web/app.js` | "Talk to the agent" button, browser call dock and live-call views |
+| `scripts/check_live_api.js` | Offline check of all endpoints with stubbed Supabase and Vapi |
+
+### Setup order
+
+1. **Supabase** — create a free project, open the SQL editor, paste and run
+   `supabase/schema.sql`. Copy the project URL and the `service_role` key from
+   Project Settings → API.
+2. **Vapi** — create an account and copy the private API key and the public key
+   from the dashboard. No assistant needs to be created by hand;
+   `web/api/setup.js` creates it.
+3. **Vercel environment variables** — add these to the project (Production and
+   Preview), never to the repository:
+
+   | Variable | Where it comes from |
+   | --- | --- |
+   | `VAPI_PUBLIC_KEY` | Vapi dashboard, public key |
+   | `VAPI_PRIVATE_KEY` | Vapi dashboard, private key |
+   | `VAPI_SERVER_SECRET` | Any long random string you generate; Vapi sends it back in `X-Vapi-Secret` |
+   | `SETUP_TOKEN` | Any long random string; protects the one-time setup endpoint |
+   | `SUPABASE_URL` | Supabase project URL |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Supabase `service_role` key (server only) |
+   | `VAPI_ASSISTANT_ID` | Optional. Filled automatically by setup into `settings` |
+
+4. **Deploy on Vercel.** The project is connected to GitHub `main` and serves the
+   repository root as a flat site: `index.html`, `styles.css` and `app.js` at the
+   top level, with the functions in `api/`. Upload the changed files to `main`
+   (or drop `vercel-upload.zip` on the project) and Vercel rebuilds
+   `https://ai-customer-calling-agent.vercel.app/`.
+
+5. **Create the assistant once** after the first deployment:
+
+   ```bash
+   curl -X POST https://ai-customer-calling-agent.vercel.app/api/setup \
+     -H "x-setup-token: YOUR_SETUP_TOKEN"
+   ```
+
+   The response contains the assistant id. Re-running the same request updates
+   the assistant.
+
+6. **Make a call** — open the site, press **Talk to the agent**, allow the
+   microphone, and try `Where is order ORD-1002?`. End the call and wait a few
+   seconds; the row appears under **Live calls** with its transcript.
+
+If Vapi rejects the browser origin, add the deployed domain to the allowed
+origins for the public key in the Vapi dashboard.
+
+### Offline checks
+
+These do not need any account or key:
+
+```bash
+node scripts/check_live_api.js
+```
+
+The script stubs Supabase and the Vapi assistant API and checks 18 cases:
+configuration, setup token, assistant create/update, webhook secret, order found
+and not found, FAQ hit and miss, business hours, handoff, outcome logging,
+invalid outcome, end-of-call save, duration, card masking, and call list/detail.
+Captured output: `docs/step_a_api_check.txt`.
+
+### What Step A does not include
+
+- **No phone number.** Calls are browser web calls only.
+- **English only.** Deepgram is configured for English; Urdu and mixed-language
+  speech are Step B and are not claimed as working.
+- **Barge-in is available through Vapi but not tuned or measured yet.** The
+  latency target of about 1.5 seconds will be measured in Step B.
+- **No identity check yet.** Order status uses sample orders and exposes no
+  personal details; the order-ID-plus-name check is Step B.
+- **Prompt-injection resistance is written into the system prompt but not tested**
+  with adversarial calls yet; that test is Step F.
+- **The live-call API is public** for Step A. Server-side login with `admin` and
+  `viewer` roles is Step C; until then, do not put real customer data in it.
+- **No audio is stored.** Only transcript and summary are saved, and card/CNIC
+  patterns are masked before saving.
+- **No appointments or outbound calling yet.** Steps D and E add them.
 
 ---
 
@@ -305,35 +411,46 @@ real HTTP (captured output: `docs/week3_dashboard_check.txt`).
 
 ### Hosted project website
 
-`web/` is the public, read-only website for the whole build. It is plain HTML,
-CSS and JavaScript with no build step and no backend:
+`web/` is the public website for the whole build. The pages are still plain
+HTML, CSS and JavaScript with no build step. Live web calls call the `/api`
+functions:
 
 ```bash
 python -m http.server 8090 --bind 127.0.0.1 --directory web
 # open http://127.0.0.1:8090/
 ```
 
-Published copy: <https://ai-customer-calling-agent.vercel.app/>. It serves the
-files in `web/`, so re-upload them after any change. The site has seven views:
-Home, Dashboard, Call log, call detail, Journey, How it works and Testing. It
-needs no sign-in. All records are fictional sample data; call #1 is the captured
-Week 3 demo transcript. There is no telephony, CRM API or audio, and analytics
-are calculated in the browser from `web/app.js`. Local checks are recorded in
+A static server shows every page, but the live panel reports that the API is not
+available because those functions run on Vercel. Published copy:
+<https://ai-customer-calling-agent.vercel.app/>. Live calls are labelled
+**Live call**; the twelve older records are labelled **Sample data**. There is no
+telephony, and no audio is stored. Local checks are recorded in
 `docs/week3_deploy_check.txt`.
 
 ### Deploy the website on Vercel
 
-`vercel.json` at the repository root turns off framework auto-detection so the
-static files are served as-is. Connect the repository at
-<https://vercel.com/new>, or deploy the `web` folder directly:
+The Vercel project `ai-customer-calling-agent` is connected to GitHub `main` and
+serves the **repository root** as a flat static site: `index.html`,
+`styles.css` and `app.js` at the top level, with the functions in `api/`.
 
-```bash
-cd web
-npx vercel --prod
-```
+The local working copy keeps the site in `web/`, so a deploy copies it flatter:
 
-The Python dashboard, SQLite call log and CRM do **not** run on Vercel — only
-the static website does.
+| Local file | Repository / Vercel |
+| --- | --- |
+| `web/index.html`, `web/styles.css`, `web/app.js` | `index.html`, `styles.css`, `app.js` at the root |
+| `web/api/config.js`, `setup.js`, `vapi.js`, `calls.js`, `_assistant.js`, `_lib.js` | the same files in `api/` |
+| `web/*.docx` | already at the repository root |
+
+Upload the changed files at the repository root with **Add file → Upload files**
+(GitHub keeps the dragged folder's name, so dragging `web/api` creates `api/`),
+or drop `vercel-upload.zip`, which already has the flat layout, on the project in
+Vercel Drop. Vercel needs no build step; each file in `api/` becomes a Node
+function at `/api/*`.
+
+Add the environment variables listed under
+[Live voice agent (Step A)](#live-voice-agent-step-a), then create the assistant
+with the one-time `/api/setup` request. The Python dashboard, SQLite call log and
+local CRM do **not** run on Vercel; live calls use Supabase instead.
 
 ### Rebuild the Week 2 report
 
@@ -457,39 +574,48 @@ Everything in `src/sample_data.py` is fictional: orders `ORD-1001` to `ORD-1005`
 the "Sample Store Support" name, the 9 AM–6 PM hours and every FAQ answer. The
 Week 3 CRM seed (`src/crm.py`) is also fictional: `Sample Customer A` to
 `Sample Customer E`, phone numbers `0300-0000001` to `0300-0000005`, and
-`@example.test` email addresses. None of it describes a real company or real
-customer. Replace it with client-approved content (or a CRM/API) before any live
-call.
+`@example.test` email addresses. `supabase/schema.sql` seeds the same order and
+FAQ samples for the live agent. None of it describes a real company or real
+customer. Replace it with client-approved content (or a CRM/API) before pointing
+the live agent at a real business.
 
 ## Limitations
 
-- Customer input is typed, not spoken — no microphone, streaming STT or audio
-  capture is connected.
-- Spoken output is the local Windows voice, not a telephony voice; barge-in
-  (customer interrupting the agent) needs a real audio stream and is not done.
-- Response latency has not been measured against the 1.5-second target.
-- Rule-based keyword matching, so unusual phrasing can fall back.
-- The CRM and call log are local SQLite stand-ins with fictional data; no client
-  CRM/API is connected and no PII handling or retention policy is implemented.
-- The dashboard is a local demo: single hard-coded username, password from an
-  environment variable, in-memory session, no TLS, no user management. Do not
-  expose it to a network or point it at real customer data.
-- There are no call recordings and no audio playback because there is no
-  telephony or audio capture.
-- English and a few greeting words only; full Urdu/English support is later.
+- No phone number is connected. The live agent runs as a browser web call only.
+- The live call is built but **not yet verified**: it needs the Vercel
+  environment keys and the three test calls listed in the delivery checklist.
+- Deepgram is configured for English. Urdu and mixed Urdu-English speech are
+  Step B and are not claimed as working.
+- Vapi supports barge-in on the web call, but it has not been tuned or measured
+  against the 1.5-second response target yet.
+- The old Python prototype still uses keyword rules; the live agent uses an LLM
+  with the same approved tools and data.
+- Orders and FAQs in Supabase are the same samples as the local CRM. No client
+  CRM/API is connected.
+- The live-call API has no sign-in yet, so it must not hold real customer data.
+  Server-side `admin`/`viewer` login is Step C.
+- There are no call recordings or audio playback, by choice: only transcripts
+  and summaries are stored.
+- Appointments, outbound calling and the Do-Not-Call list are not built yet
+  (Steps D and E).
 
 ## Next steps (Week 4)
 
-1. Connect a telephony provider and test number, then place the first real test
-   call — still blocked until the access in the table above is provided.
-2. Replace typed input with streaming speech-to-text and the Windows voice with
-   a telephony voice; handle barge-in and measure end-to-end latency.
-3. Replace the local SQLite CRM with the client's approved CRM/API, keeping the
-   same repository methods so callers do not change.
-4. Run a small supervised pilot, review transcripts in the dashboard, and tune
-   the rules and knowledge base from real (consented) conversations.
-5. Add proper authentication, HTTPS and retention rules before the dashboard
-   leaves localhost.
+1. **Step A — live web call (built, awaiting verification).** Add the Vercel
+   environment keys, run `/api/setup`, then make three real test calls: order
+   status, FAQ or business hours, and an escalation. Confirm each appears in the
+   dashboard with transcript and outcome.
+2. **Step B — language and barge-in.** Enable Urdu and mixed-language speech,
+   tune interruption handling, and measure response delay against 1.5 seconds.
+3. **Step C — authentication and hosted data.** Add server-side login with
+   `admin` and `viewer` roles and protect the live-call API.
+4. **Step D — appointments.** Add the appointments table and book, reschedule
+   and cancel tools.
+5. **Step E — outbound calling.** CSV contacts, calling hours, retries and the
+   Do-Not-Call list.
+6. **Step F — KPIs and reports.** Containment, task completion, response delay
+   and escalation rate; endpoint and conversation tests; test and latency
+   reports; Journey tab update.
 
 ## Adding this to GitHub
 
@@ -530,6 +656,18 @@ git add src/crm.py src/call_store.py src/dashboard src/session.py src/voice/demo
         docs/week3_deploy_check.txt WEEK3_DEVELOPMENT_DOCUMENT.docx
 git commit -m "Week 3: local CRM, call log and admin dashboard"
 ```
+
+Week 4 Step A files. The Vercel project serves the repository root, not `web/`,
+so the site files go to the root and the functions to `api/`:
+
+- Root: `index.html`, `styles.css`, `app.js` (copied from `web/`).
+- New folder `api/` (copied from `web/api/`): `config.js`, `setup.js`,
+  `vapi.js`, `calls.js`, `_assistant.js`, `_lib.js`.
+- Also: `README.md`, `.env.example`, `supabase/schema.sql`, `.gitignore`,
+  `scripts/check_live_api.js`, `docs/step_a_api_check.txt`.
+
+GitHub's **Add file → Upload files** keeps the dragged folder's name, so
+dragging `web/api` at the repository root creates `api/` there.
 
 `data/` is ignored on purpose: the SQLite files are rebuilt on the next run and
 must never carry customer data into the repository. If the Week 1 or Week 2
