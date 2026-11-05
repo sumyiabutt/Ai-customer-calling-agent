@@ -420,9 +420,9 @@ const WEEKS = [
       'Browser call dock with live transcript, mute and end call',
       'Dashboard wired to live calls from the database, with a Vapi API fallback, labelled apart from sample data',
       'Card and CNIC patterns masked before saving; no audio is stored',
-      '18 offline API checks plus one Vapi demo call in the browser',
+      '22 offline API checks plus one Vapi demo call in the browser',
     ],
-    evidence: '18 API checks, 1 demo call',
+    evidence: '22 API checks, 1 demo call',
     pending: 'Project-assistant test call: the Vapi private key and the Supabase service key still need valid values in Vercel.',
     link: { label: 'Live calls in the dashboard', href: '#/dashboard' },
   },
@@ -1029,7 +1029,7 @@ function homeView() {
         <a class="btn btn-ghost" href="#/dashboard">Open the dashboard</a>
         <a class="btn btn-ghost" href="#/how-it-works">See how it works</a>
       </div>
-      <p class="hero-meta">Vapi voice agent &middot; hosted call log &middot; English voice &middot; 104 tests + 18 API checks</p>
+      <p class="hero-meta">Vapi voice agent &middot; hosted call log &middot; English voice &middot; 104 tests + 22 API checks</p>
     </div>
 
     <div class="call-card" aria-label="Sample call excerpt">
@@ -1130,7 +1130,7 @@ function homeView() {
           <li>Vapi browser voice call wired to the approved-data tools</li>
           <li>Hosted call log wired to the dashboard, labelled separately from sample data</li>
           <li>Admin dashboard with sample calls, transcript view and analytics</li>
-          <li>104 automated tests and 18 offline API checks</li>
+          <li>104 automated tests and 22 offline API checks</li>
         </ul>
       </div>
       <div class="panel">
@@ -1717,7 +1717,7 @@ python -m src.dashboard</pre>
             <li>Dashboard HTTP check: 19 of 19 passed</li>
             <li>Static site check: 13 of 13 rendering checks passed</li>
             <li>Simulated call transcripts saved for the sample stages</li>
-            <li>Step A API check: 18 of 18 passed with stubbed services</li>
+            <li>Step A API check: 22 of 22 passed with stubbed services</li>
           </ul>
         </div>
       </div>
