@@ -1424,6 +1424,15 @@ td a:hover { text-decoration: underline; }
   line-height: 1.45;
 }
 
+.dock-demo {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+  margin: 0 0 10px;
+  text-decoration: underline;
+}
+
 .dock-transcript {
   max-height: 170px;
   overflow-y: auto;

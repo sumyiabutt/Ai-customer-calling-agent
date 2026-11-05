@@ -11,6 +11,9 @@
 const DATA_TODAY = '2026-11-02';
 const TOTAL_TESTS = 104;
 const VOICE_API = '/api';
+const VOICE_DEMO_URL =
+  'https://vapi.ai/?demo=true&shareKey=011447f5-b1c9-43ad-9ffa-7d9048296b50' +
+  '&assistantId=ad1793c2-419a-4988-9434-79cef0d4ac62';
 
 const REPLIES = {
   greeting:
@@ -795,6 +798,24 @@ function setCallControls(active) {
   if (end) end.hidden = !active;
 }
 
+function clearDockDemoLink() {
+  const link = document.getElementById('call-demo-link');
+  if (link) link.remove();
+}
+
+function showDockDemoLink() {
+  const note = document.getElementById('call-note');
+  if (!note || document.getElementById('call-demo-link')) return;
+  const link = document.createElement('a');
+  link.id = 'call-demo-link';
+  link.className = 'dock-demo';
+  link.href = VOICE_DEMO_URL;
+  link.target = '_blank';
+  link.rel = 'noopener';
+  link.textContent = 'Open the live voice demo \u2192';
+  note.insertAdjacentElement('afterend', link);
+}
+
 function appendDockTurn(speaker, text) {
   const box = document.getElementById('call-transcript');
   if (!box) return;
@@ -832,6 +853,7 @@ async function startLiveCall() {
   const transcript = document.getElementById('call-transcript');
   if (transcript) transcript.innerHTML = '';
   setCallControls(false);
+  clearDockDemoLink();
   setDockNote('Checking the live voice setup\u2026');
   setDockStatus('Checking', 'warn');
 
@@ -842,8 +864,9 @@ async function startLiveCall() {
       setDockNote(
         'Live calls are not switched on yet: the Vapi and Supabase keys are missing ' +
         'from the hosting environment. Nothing was recorded and the dashboard still ' +
-        'shows sample data.'
+        'shows sample data. The demo link below opens a working browser call in the meantime.'
       );
+      showDockDemoLink();
       return;
     }
 
@@ -1032,13 +1055,15 @@ function homeView() {
         <p class="section-kicker">Live voice agent</p>
         <h2>Talk to Sumyia in the browser</h2>
         <p>Press the button, allow the microphone and speak in English.
-          Sumyia answers from the approved order and FAQ data, and the finished
-          call is saved to the dashboard with its transcript and outcome.</p>
+          When the hosted keys are present the call runs inside this page and the
+          finished call is saved to the dashboard with its transcript and outcome.</p>
         <p class="live-band-note">Browser calls only: no phone number is connected.
-          Urdu and mixed-language speech are the next step. Audio is never stored.</p>
+          Urdu and mixed-language speech are the next step. Audio is never stored.
+          Until the keys are added, the demo link opens a working browser call.</p>
       </div>
       <div class="live-band-actions">
         <button class="btn btn-live" type="button" data-action="talk">Talk to the agent</button>
+        <a class="btn btn-ghost" href="${VOICE_DEMO_URL}" target="_blank" rel="noopener">Open live voice demo</a>
         <a class="btn btn-ghost" href="#/dashboard">See live calls</a>
       </div>
     </div>
