@@ -620,8 +620,8 @@ function liveCallsPanel() {
         <h2 id="live-calls-title">Live calls</h2>
         ${liveBadge()}
       </div>
-      <p class="panel-note">Calls from the browser voice agent, saved to the hosted
-        database. These are real conversations, separate from the sample records below.</p>
+      <p class="panel-note">Calls from the live voice agent, with their transcript and
+        outcome. These are real conversations, separate from the sample records below.</p>
       <div id="live-panel"><div class="empty">Loading live calls\u2026</div></div>
     </section>`;
 }
