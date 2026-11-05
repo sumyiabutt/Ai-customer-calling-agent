@@ -638,7 +638,8 @@ function renderLivePanel() {
     const offline = /404|Failed to fetch|NetworkError/i.test(liveCallsError);
     target.innerHTML = offline
       ? '<div class="empty">Live calling needs the Vercel API deployment. This copy of the site shows sample data only.</div>'
-      : '<div class="empty">Live calls are not connected yet: the hosted keys are still being set up. The sample records below are unchanged.</div>';
+      : '<div class="empty">Live calls are not connected yet: the hosted keys are still being set up. ' +
+        'The sample records below are unchanged. <a href="#/setup">Open hosted setup</a></div>';
     return;
   }
   if (!liveCalls.length) {
@@ -799,8 +800,10 @@ function setCallControls(active) {
 }
 
 function clearDockDemoLink() {
-  const link = document.getElementById('call-demo-link');
-  if (link) link.remove();
+  ['call-demo-link', 'call-setup-link'].forEach((id) => {
+    const link = document.getElementById(id);
+    if (link) link.remove();
+  });
 }
 
 function showDockDemoLink() {
@@ -813,6 +816,18 @@ function showDockDemoLink() {
   link.target = '_blank';
   link.rel = 'noopener';
   link.textContent = 'Open the Vapi sample call (not Sumyia) \u2192';
+  note.insertAdjacentElement('afterend', link);
+}
+
+function showDockSetupLink() {
+  const note = document.getElementById('call-note');
+  if (!note || document.getElementById('call-setup-link')) return;
+  const link = document.createElement('a');
+  link.id = 'call-setup-link';
+  link.className = 'dock-demo';
+  link.href = '#/setup';
+  link.textContent = 'Open hosted setup \u2192';
+  link.addEventListener('click', () => closeDock());
   note.insertAdjacentElement('afterend', link);
 }
 
@@ -864,10 +879,11 @@ async function startLiveCall() {
       setDockNote(
         'Calls inside this page need valid hosting keys, and those values are not in ' +
         'place yet. Nothing was recorded and the dashboard still shows sample data. ' +
-        'The link below opens Vapi\u2019s own sample assistant, which is not Sumyia ' +
-        'and is not saved here.'
+        'The setup page shows which keys are still missing. The second link opens ' +
+        'Vapi\u2019s own sample assistant, which is not Sumyia and is not saved here.'
       );
       showDockDemoLink();
+      showDockSetupLink();
       return;
     }
 
@@ -1726,6 +1742,181 @@ python -m src.dashboard</pre>
     </section>`;
 }
 
+/* ---------- Hosted setup ---------- */
+
+const SETUP_TOKEN_KEY = 'shopeasy.setupToken';
+
+function readSetupToken() {
+  const input = document.getElementById('setup-token');
+  const typed = input && input.value ? input.value.trim() : '';
+  if (!typed) {
+    try { return sessionStorage.getItem(SETUP_TOKEN_KEY) || ''; } catch { return ''; }
+  }
+  try { sessionStorage.setItem(SETUP_TOKEN_KEY, typed); } catch { /* storage can be disabled */ }
+  return typed;
+}
+
+function setupResult(html, tone) {
+  const box = document.getElementById('setup-output');
+  if (!box) return;
+  box.className = `setup-result ${tone || ''}`.trim();
+  box.innerHTML = html;
+}
+
+function setupRow(label, ok) {
+  return `<li>${escapeHtml(label)}: ${ok ? 'set' : 'missing'}</li>`;
+}
+
+function setupView() {
+  return `
+    <div class="page-head">
+      <div>
+        <p class="section-kicker">Hosted setup</p>
+        <h1>Connect the live agent</h1>
+        <p>Two things are needed before a call can run inside this page: the Vapi keys in
+          the hosting environment, and an assistant built from the definition in this project.
+          This page never displays a key value.</p>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <section class="panel" aria-labelledby="setup-keys-title">
+        <div class="panel-head">
+          <h2 id="setup-keys-title">1. Environment variables</h2>
+        </div>
+        <p class="panel-note">Set these in the hosting project, then redeploy. Values are
+          entered there, never in this site or the repository.</p>
+        <pre class="code">VAPI_PUBLIC_KEY
+VAPI_PRIVATE_KEY
+VAPI_SERVER_SECRET
+SETUP_TOKEN
+VAPI_ASSISTANT_ID      optional
+SUPABASE_URL           optional
+SUPABASE_SERVICE_ROLE_KEY   optional</pre>
+        <ul class="scope-list yes">
+          <li>Public key: the client-side key used by the browser SDK.</li>
+          <li>Private key: server only, used to create the assistant and read calls.</li>
+          <li>Webhook secret: checked on every request from Vapi to this backend.</li>
+          <li>Setup token: a string only the owner knows; it unlocks the buttons below.</li>
+        </ul>
+        <p class="panel-note">The Supabase pair is only needed to store calls and to read
+          the seed orders and FAQs. Without it, calls still run but the tools have no data.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="setup-assistant-title">
+        <div class="panel-head">
+          <h2 id="setup-assistant-title">2. Create the assistant</h2>
+        </div>
+        <p class="panel-note">The assistant named <strong>Sumyia \u2014 ShopEasy</strong> is
+          defined in <code>api/_assistant.js</code>: greeting, system prompt, five tools and
+          the signed webhook. These buttons check the environment, then create or update it
+          in Vapi.</p>
+        <div class="setup-form">
+          <input id="setup-token" type="password" autocomplete="off" spellcheck="false"
+            aria-label="Setup token"
+            placeholder="Setup token (kept in this browser tab only)">
+        </div>
+        <div class="setup-actions">
+          <button class="btn btn-ghost" type="button" data-action="setup-check">Check configuration</button>
+          <button class="btn btn-primary" type="button" data-action="setup-create">Create or update assistant</button>
+        </div>
+        <div id="setup-output" class="setup-result"></div>
+      </section>
+    </div>
+
+    <section class="panel" style="margin-top:18px" aria-labelledby="setup-test-title">
+      <div class="panel-head">
+        <h2 id="setup-test-title">3. Make the first call</h2>
+      </div>
+      <p class="panel-note">When the check above shows every key accepted and an assistant id,
+        start a call and ask for <code>ORD-1002</code>, then an FAQ question, then ask for a
+        human. Each call appears under Live calls on the dashboard once Vapi sends its
+        end-of-call report.</p>
+      <div class="setup-actions">
+        <button class="btn btn-live" type="button" data-action="talk">Talk to the agent</button>
+        <a class="btn btn-ghost" href="#/dashboard">Open dashboard</a>
+      </div>
+    </section>
+
+    <section class="callout" style="margin-top:18px">
+      <h2>Why this page cannot fill in the keys</h2>
+      <p>Pasting a key value into a web page that then writes it to the hosting provider would
+        expose it to the browser and to this code. The key values are therefore entered only by
+        the account owner in the hosting dashboard. Everything after that step can run from
+        here.</p>
+    </section>`;
+}
+
+async function runSetupCheck() {
+  const token = readSetupToken();
+  if (!token) {
+    setupResult('<p>Enter the setup token first.</p>', 'warn');
+    return;
+  }
+  setupResult('<p class="muted">Checking the hosting configuration\u2026</p>');
+
+  try {
+    const state = await fetchJson(`${VOICE_API}/setup`, { headers: { 'x-setup-token': token } });
+    const rows = [
+      ['Vapi public key', state.vapiPublicKey],
+      ['Vapi private key', state.vapiPrivateKey],
+      ['Webhook secret', state.vapiServerSecret],
+      ['Supabase URL', state.supabaseUrl],
+      ['Supabase service key', state.supabaseServiceKey],
+    ];
+    const missing = rows.filter((row) => !row[1]);
+    const parts = [
+      `<ul class="scope-list ${missing.length ? 'no' : 'yes'}">${rows
+        .map((row) => setupRow(row[0], row[1]))
+        .join('')}</ul>`,
+    ];
+    if (state.publicKeyLooksMasked) {
+      parts.push('<p>The stored public key is only bullet characters, so a masked copy was ' +
+        'saved. Delete that variable in the hosting project and add it again with the real key.</p>');
+    }
+    parts.push(state.vapiOk
+      ? '<p class="muted">Vapi accepted the private key.</p>'
+      : `<p class="muted">Vapi rejected the private key check (${state.vapiStatus || 'no response'}).</p>`);
+    parts.push(state.assistantId
+      ? `<p>Assistant id: <code>${escapeHtml(state.assistantId)}</code></p>`
+      : '<p class="muted">No assistant with this name exists yet. Use the button above.</p>');
+    setupResult(parts.join(''), missing.length || !state.vapiOk ? 'warn' : '');
+  } catch (error) {
+    setupResult(`<p>${escapeHtml(error.message)}</p>` +
+      '<p class="muted">A rejected token is the usual cause. Enter the same value that is ' +
+      'stored as the setup token in the hosting project.</p>', 'warn');
+  }
+}
+
+async function runSetupCreate() {
+  const token = readSetupToken();
+  if (!token) {
+    setupResult('<p>Enter the setup token first.</p>', 'warn');
+    return;
+  }
+  setupResult('<p class="muted">Creating the assistant in Vapi\u2026</p>');
+
+  try {
+    const data = await fetchJson(`${VOICE_API}/setup`, {
+      method: 'POST',
+      headers: { 'x-setup-token': token, 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    const parts = [
+      `<p><strong>${data.created ? 'Assistant created' : 'Assistant updated'}.</strong> ` +
+        `Id: <code>${escapeHtml(data.assistantId)}</code></p>`,
+      `<p class="muted">Webhook: <code>${escapeHtml(data.serverUrl || '')}</code></p>`,
+    ];
+    if (data.warning) parts.push(`<p class="muted">${escapeHtml(data.warning)}</p>`);
+    parts.push('<p class="muted">Reload the home page and start a call to test it.</p>');
+    setupResult(parts.join(''));
+  } catch (error) {
+    setupResult(`<p>${escapeHtml(error.message)}</p>` +
+      '<p class="muted">The private key and webhook secret must both be valid values in the ' +
+      'hosting project before this can succeed.</p>', 'warn');
+  }
+}
+
 /* ---------- Routing ---------- */
 
 const main = $('#main');
@@ -1737,6 +1928,7 @@ const TITLES = {
   journey: 'Build journey — AI Customer Calling Agent',
   how: 'How it works — AI Customer Calling Agent',
   testing: 'Testing — AI Customer Calling Agent',
+  setup: 'Hosted setup — AI Customer Calling Agent',
 };
 
 function setActiveNav(routeName) {
@@ -1779,6 +1971,9 @@ function route() {
   } else if (hash === '#/testing') {
     html = testingView();
     view = 'testing';
+  } else if (hash === '#/setup') {
+    html = setupView();
+    view = 'setup';
   } else {
     html = homeView();
   }
@@ -1789,11 +1984,27 @@ function route() {
   window.scrollTo({ top: 0, behavior: 'auto' });
   main.focus({ preventScroll: true });
 
+  if (view === 'setup') {
+    const input = document.getElementById('setup-token');
+    if (input) {
+      try { input.value = sessionStorage.getItem(SETUP_TOKEN_KEY) || ''; } catch { /* storage can be disabled */ }
+    }
+  }
+
   if (liveMatch) loadLiveDetail(liveMatch[1]);
   else if (view === 'dashboard' || view === 'calls') loadLiveCalls();
 }
 
 main.addEventListener('click', (event) => {
+  if (!(event.target instanceof Element)) return;
+  if (event.target.closest('[data-action="setup-check"]')) {
+    runSetupCheck();
+    return;
+  }
+  if (event.target.closest('[data-action="setup-create"]')) {
+    runSetupCreate();
+    return;
+  }
   const chip = event.target.closest('[data-filter]');
   if (!chip) return;
   activeFilter = chip.dataset.filter;

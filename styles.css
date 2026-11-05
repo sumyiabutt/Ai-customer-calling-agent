@@ -1494,3 +1494,38 @@ nav .nav-call {
 }
 
 nav .nav-call:hover { background: #0c5740; }
+
+.setup-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.setup-form input {
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.setup-actions .btn { cursor: pointer; font-family: inherit; }
+
+.setup-result { margin-top: 14px; }
+
+.setup-result.warn { color: var(--warn); }
+
+.setup-result .muted { color: var(--grey); font-size: 13px; }
+
+.setup-result code { word-break: break-all; }
