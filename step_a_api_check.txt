@@ -1,0 +1,20 @@
+PASS  config reports not configured before setup
+PASS  setup rejects a wrong token
+PASS  setup creates an assistant and stores its id
+PASS  setup updates the existing assistant
+PASS  config returns the public key and assistant id
+PASS  webhook rejects a wrong secret
+PASS  order found
+PASS  order not found
+PASS  FAQ hit
+PASS  FAQ miss
+PASS  business hours
+PASS  handoff saved
+PASS  outcome saved
+PASS  invalid outcome rejected
+PASS  end-of-call report saved, duration and masked transcript
+PASS  call list
+PASS  call detail rejects a bad id
+PASS  call detail
+
+18 checks passed.
