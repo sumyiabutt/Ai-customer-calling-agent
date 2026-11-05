@@ -1,6 +1,16 @@
 'use strict';
 
 const { json, sb } = require('./_lib');
+const { findAssistantId } = require('./_assistant');
+
+let cached = { id: '', at: 0 };
+
+async function resolveAssistantId() {
+  if (cached.id && Date.now() - cached.at < 60000) return cached.id;
+  const id = await findAssistantId();
+  if (id) cached = { id, at: Date.now() };
+  return id;
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -17,6 +27,10 @@ module.exports = async function handler(req, res) {
     } catch {
       assistantId = '';
     }
+  }
+
+  if (!assistantId) {
+    assistantId = await resolveAssistantId();
   }
 
   json(res, 200, {
