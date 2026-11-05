@@ -1529,3 +1529,5 @@ nav .nav-call:hover { background: #0c5740; }
 .setup-result .muted { color: var(--grey); font-size: 13px; }
 
 .setup-result code { word-break: break-all; }
+
+.dock-demo + .dock-demo { margin-left: 12px; }
