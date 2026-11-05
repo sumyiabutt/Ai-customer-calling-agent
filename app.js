@@ -415,15 +415,15 @@ const WEEKS = [
       'A browser voice call through Vapi, webhook tools that read the approved ' +
       'orders and FAQs, and finished calls saved to a hosted database.',
     points: [
-      'Vapi assistant created from code with five approved tools',
+      'Assistant definition kept in code: five approved tools and a signed webhook',
       'Webhook with secret verification for order status, FAQ, hours, handoff and outcome',
       'Browser call dock with live transcript, mute and end call',
-      'Live calls written to Supabase and labelled separately from sample data',
+      'Dashboard wired to live calls from the database, with a Vapi API fallback, labelled apart from sample data',
       'Card and CNIC patterns masked before saving; no audio is stored',
-      '18 offline API checks in place of a live test call',
+      '18 offline API checks plus one Vapi demo call in the browser',
     ],
-    evidence: '18 API checks',
-    pending: 'First real test call: the hosted API keys and Vercel deployment are still pending.',
+    evidence: '18 API checks, 1 demo call',
+    pending: 'Project-assistant test call: the Vapi private key and the Supabase service key still need valid values in Vercel.',
     link: { label: 'Live calls in the dashboard', href: '#/dashboard' },
   },
 ];
@@ -638,7 +638,7 @@ function renderLivePanel() {
     const offline = /404|Failed to fetch|NetworkError/i.test(liveCallsError);
     target.innerHTML = offline
       ? '<div class="empty">Live calling needs the Vercel API deployment. This copy of the site shows sample data only.</div>'
-      : '<div class="empty">The live call store is not reachable right now. The sample records below are unchanged.</div>';
+      : '<div class="empty">Live calls are not connected yet: the hosted keys are still being set up. The sample records below are unchanged.</div>';
     return;
   }
   if (!liveCalls.length) {
@@ -812,7 +812,7 @@ function showDockDemoLink() {
   link.href = VOICE_DEMO_URL;
   link.target = '_blank';
   link.rel = 'noopener';
-  link.textContent = 'Open the live voice demo \u2192';
+  link.textContent = 'Open the Vapi sample call (not Sumyia) \u2192';
   note.insertAdjacentElement('afterend', link);
 }
 
@@ -862,9 +862,10 @@ async function startLiveCall() {
     if (!config.configured) {
       setDockStatus('Setup needed', 'warn');
       setDockNote(
-        'Live calls are not switched on yet: the Vapi and Supabase keys are missing ' +
-        'from the hosting environment. Nothing was recorded and the dashboard still ' +
-        'shows sample data. The demo link below opens a working browser call in the meantime.'
+        'Calls inside this page need valid hosting keys, and those values are not in ' +
+        'place yet. Nothing was recorded and the dashboard still shows sample data. ' +
+        'The link below opens Vapi\u2019s own sample assistant, which is not Sumyia ' +
+        'and is not saved here.'
       );
       showDockDemoLink();
       return;
@@ -1046,7 +1047,7 @@ function homeView() {
     <div class="stat"><span class="stat-value">${TOTAL_TESTS}</span><span class="stat-label">Automated tests passing</span></div>
     <div class="stat"><span class="stat-value">8</span><span class="stat-label">Supported intents</span></div>
     <div class="stat"><span class="stat-value">12</span><span class="stat-label">Calls in the log</span></div>
-    <div class="stat"><span class="stat-value">3</span><span class="stat-label">Build stages delivered</span></div>
+    <div class="stat"><span class="stat-value">4</span><span class="stat-label">Build stages delivered</span></div>
   </section>
 
   <section class="section">
@@ -1059,11 +1060,12 @@ function homeView() {
           finished call is saved to the dashboard with its transcript and outcome.</p>
         <p class="live-band-note">Browser calls only: no phone number is connected.
           Urdu and mixed-language speech are the next step. Audio is never stored.
-          Until the keys are added, the demo link opens a working browser call.</p>
+          The second button opens Vapi's own sample assistant, not Sumyia, and its
+          calls are not saved to this dashboard.</p>
       </div>
       <div class="live-band-actions">
         <button class="btn btn-live" type="button" data-action="talk">Talk to the agent</button>
-        <a class="btn btn-ghost" href="${VOICE_DEMO_URL}" target="_blank" rel="noopener">Open live voice demo</a>
+        <a class="btn btn-ghost" href="${VOICE_DEMO_URL}" target="_blank" rel="noopener">Vapi sample call (not Sumyia)</a>
         <a class="btn btn-ghost" href="#/dashboard">See live calls</a>
       </div>
     </div>
@@ -1119,7 +1121,7 @@ function homeView() {
         <h2>Not connected yet</h2>
         <ul class="scope-list no">
           <li>Real phone number and public telephony line</li>
-          <li>First live test call: the Vercel API and Vapi/Supabase keys are not deployed yet</li>
+          <li>Project-assistant test call: valid Vapi and Supabase key values are still missing in Vercel</li>
           <li>Urdu and mixed Urdu-English speech</li>
           <li>Client CRM or order API (sample orders stand in)</li>
           <li>Call recordings, audio storage and playback (not stored by design)</li>
@@ -1389,7 +1391,7 @@ function journeyView() {
     </article>`).join('');
 
   const nextSteps = [
-    'Set the Vercel environment keys and deploy the API functions.',
+    'Set valid Vapi and Supabase key values in Vercel, then redeploy.',
     'Run the first live test calls: order status, FAQ and escalation, with latency measured.',
     'Add Urdu and mixed Urdu-English speech.',
     'Put server-side admin and viewer login in front of the live-call API.',
@@ -1413,8 +1415,10 @@ function journeyView() {
       <div>
         <h1>Build journey</h1>
         <p class="page-sub">What each build stage delivered, how it was tested and
-          what still needs external access. Everything runs locally as a simulated
-          agent; no live phone call has been made.</p>
+          what still needs external access. Stages 1 to 3 run on the local
+          prototype. Stage 4 runs in the browser through Vapi: one demo call was
+          placed with Vapi\u2019s sample assistant, while the project assistant
+          waits on valid hosting keys.</p>
       </div>
     </div>
 
@@ -1442,9 +1446,10 @@ function journeyView() {
       <section class="panel" aria-labelledby="blocked-title">
         <h2 id="blocked-title">Still blocked</h2>
         <p class="panel-note" style="margin:0">
-          No phone line is connected and no real call has been made yet. The
-          browser call is built on Vapi and the hosted call log on Supabase, but
-          the Vercel API, the keys and the first test call are still pending.
+          No phone line is connected. The API functions are deployed and one
+          browser demo call was placed on Vapi's sample assistant; the project
+          assistant still needs valid key values in Vercel before a call can run
+          on this page and be saved to the call log.
         </p>
       </section>
     </div>`;
@@ -1500,7 +1505,8 @@ function howItWorksView() {
       <div>
         <h1>How it works</h1>
         <p class="page-sub">The pipeline, the eight intents, the escalation rules,
-          the data model and the safety limits of the local build.</p>
+          the data model and the safety limits of the local build, plus what the
+          hosted version adds.</p>
       </div>
     </div>
 
