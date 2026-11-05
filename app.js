@@ -638,7 +638,7 @@ function renderLivePanel() {
     const offline = /404|Failed to fetch|NetworkError/i.test(liveCallsError);
     target.innerHTML = offline
       ? '<div class="empty">Live calling needs the Vercel API deployment. This copy of the site shows sample data only.</div>'
-      : `<div class="empty">Live calls are unavailable right now. ${escapeHtml(liveCallsError)}</div>`;
+      : '<div class="empty">The live call store is not reachable right now. The sample records below are unchanged.</div>';
     return;
   }
   if (!liveCalls.length) {
