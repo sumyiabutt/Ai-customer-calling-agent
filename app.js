@@ -1802,14 +1802,30 @@ function setupView() {
         </div>
         <p class="panel-note">Set these in the hosting project, then redeploy. Values are
           entered there, never in this site or the repository. A saved change takes effect
-          only after the newest deployment is rebuilt.</p>
-        <pre class="code">VAPI_PUBLIC_KEY
-VAPI_PRIVATE_KEY
-VAPI_SERVER_SECRET
-SETUP_TOKEN
-VAPI_ASSISTANT_ID      optional
-SUPABASE_URL           optional
-SUPABASE_SERVICE_ROLE_KEY   optional</pre>
+          only after the newest deployment is rebuilt. If the setup token is no longer
+          known, replace <code>SETUP_TOKEN</code> with a new value you choose, redeploy, and
+          use that value below.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Where the value comes from</th></tr></thead>
+            <tbody>
+              <tr><td><code>VAPI_PUBLIC_KEY</code></td><td>Vapi \u2192 API Keys \u2192 Public API keys.
+                Use <strong>Add Key</strong>, because an existing key is only shown as dots.</td></tr>
+              <tr><td><code>VAPI_PRIVATE_KEY</code></td><td>Vapi \u2192 API Keys \u2192 Private API keys.
+                Server only; never used in the browser.</td></tr>
+              <tr><td><code>VAPI_SERVER_SECRET</code></td><td>A long random string you choose.
+                Vapi sends it back with every webhook request.</td></tr>
+              <tr><td><code>SETUP_TOKEN</code></td><td>Another string you choose. It unlocks the
+                two buttons in the next panel.</td></tr>
+              <tr><td><code>SUPABASE_URL</code></td><td>Supabase \u2192 Project Settings \u2192 API \u2192
+                Project URL.</td></tr>
+              <tr><td><code>SUPABASE_SERVICE_ROLE_KEY</code></td><td>Supabase \u2192 Project Settings
+                \u2192 API keys \u2192 service_role. Server only.</td></tr>
+              <tr><td><code>VAPI_ASSISTANT_ID</code></td><td>Optional. Leave it empty; after setup
+                the assistant is found by name.</td></tr>
+            </tbody>
+          </table>
+        </div>
         <ul class="scope-list yes">
           <li>Public key: the client-side key used by the browser SDK.</li>
           <li>Private key: server only, used to create the assistant and read calls.</li>
@@ -1901,10 +1917,19 @@ async function runSetupCheck() {
     parts.push(state.vapiOk
       ? '<p class="muted">Vapi accepted the private key.</p>'
       : `<p class="muted">Vapi rejected the private key check (${state.vapiStatus || 'no response'}).</p>`);
+    if (state.supabaseUrl && state.supabaseServiceKey) {
+      parts.push(state.supabaseOk
+        ? '<p class="muted">Supabase accepted the service key.</p>'
+        : `<p class="muted">Supabase rejected the service key check ` +
+          `(${state.supabaseStatus || 'no response'}). Orders, FAQs and saved calls stay unavailable until it is replaced.</p>`);
+    } else {
+      parts.push('<p class="muted">Supabase is not set up: calls can run, but the tools have no order or FAQ data.</p>');
+    }
     parts.push(state.assistantId
       ? `<p>Assistant id: <code>${escapeHtml(state.assistantId)}</code></p>`
       : '<p class="muted">No assistant with this name exists yet. Use the button above.</p>');
-    setupResult(parts.join(''), missing.length || !state.vapiOk ? 'warn' : '');
+    setupResult(parts.join(''), missing.length || !state.vapiOk ||
+      (state.supabaseServiceKey && !state.supabaseOk) ? 'warn' : '');
   } catch (error) {
     setupResult(`<p>${escapeHtml(error.message)}</p>` +
       '<p class="muted">A rejected token is the usual cause. Enter the same value that is ' +
