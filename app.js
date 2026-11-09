@@ -420,10 +420,10 @@ const WEEKS = [
       'Browser call dock with live transcript, mute and end call',
       'Dashboard wired to live calls from the database, with a Vapi API fallback, labelled apart from sample data',
       'Card and CNIC patterns masked before saving; no audio is stored',
-      '22 offline API checks plus one Vapi demo call in the browser',
+      '23 offline API checks, plus a hosted setup page that creates the assistant from this code',
     ],
-    evidence: '22 API checks, 1 demo call',
-    pending: 'Project-assistant test call: the Vapi private key and the Supabase service key still need valid values in Vercel.',
+    evidence: '23 API checks',
+    pending: 'Project-assistant test call: the Vapi public and private keys and the Supabase service key still need valid values in Vercel.',
     link: { label: 'Live calls in the dashboard', href: '#/dashboard' },
   },
 ];
@@ -875,13 +875,28 @@ async function startLiveCall() {
   try {
     const config = await fetchJson(`${VOICE_API}/config`);
     if (!config.configured) {
-      setDockStatus('Setup needed', 'warn');
-      setDockNote(
-        'Calls inside this page need valid hosting keys, and those values are not in ' +
-        'place yet. Nothing was recorded and the dashboard still shows sample data. ' +
-        'The setup page shows which keys are still missing. The second link opens ' +
-        'Vapi\u2019s own sample assistant, which is not Sumyia and is not saved here.'
-      );
+      const issue = config.keyIssue || '';
+      if (issue === 'masked' || issue === 'placeholder') {
+        setDockStatus('Key needs replacing', 'warn');
+        setDockNote(
+          `The public key saved in hosting is ${issue === 'masked' ? 'masked bullet characters' : 'placeholder text'}, ` +
+          'not a usable Vapi key. Replace the VAPI_PUBLIC_KEY value with the key copied ' +
+          'from Vapi, then redeploy. The setup page lists what else is still missing.'
+        );
+      } else if (issue === 'empty') {
+        setDockStatus('Setup needed', 'warn');
+        setDockNote(
+          'No Vapi public key is saved in the hosting project yet. Add VAPI_PUBLIC_KEY, ' +
+          'redeploy, then open the setup page. Nothing was recorded and the dashboard ' +
+          'still shows sample data.'
+        );
+      } else {
+        setDockStatus('Assistant missing', 'warn');
+        setDockNote(
+          'The public key is in place, but no assistant matches this project, so a call ' +
+          'cannot start. Open the setup page and create the assistant.'
+        );
+      }
       showDockDemoLink();
       showDockSetupLink();
       return;
@@ -1029,7 +1044,7 @@ function homeView() {
         <a class="btn btn-ghost" href="#/dashboard">Open the dashboard</a>
         <a class="btn btn-ghost" href="#/how-it-works">See how it works</a>
       </div>
-      <p class="hero-meta">Vapi voice agent &middot; hosted call log &middot; English voice &middot; 104 tests + 22 API checks</p>
+      <p class="hero-meta">Vapi voice agent &middot; hosted call log &middot; English voice &middot; 104 tests + 23 API checks</p>
     </div>
 
     <div class="call-card" aria-label="Sample call excerpt">
@@ -1130,7 +1145,7 @@ function homeView() {
           <li>Vapi browser voice call wired to the approved-data tools</li>
           <li>Hosted call log wired to the dashboard, labelled separately from sample data</li>
           <li>Admin dashboard with sample calls, transcript view and analytics</li>
-          <li>104 automated tests and 22 offline API checks</li>
+          <li>104 automated tests and 23 offline API checks</li>
         </ul>
       </div>
       <div class="panel">
@@ -1407,7 +1422,7 @@ function journeyView() {
     </article>`).join('');
 
   const nextSteps = [
-    'Set valid Vapi and Supabase key values in Vercel, then redeploy.',
+    'Add valid Vapi and Supabase key values in Vercel, redeploy, then run the hosted setup page to create the assistant.',
     'Run the first live test calls: order status, FAQ and escalation, with latency measured.',
     'Add Urdu and mixed Urdu-English speech.',
     'Put server-side admin and viewer login in front of the live-call API.',
@@ -1421,7 +1436,7 @@ function journeyView() {
     ['Vercel environment variables', 'Keep server keys out of the browser and repository'],
     ['Vapi webhook secret', 'Prove that each tool call comes from Vapi'],
     ['Setup token', 'Protect the one-time assistant creation endpoint'],
-    ['Supabase schema script, run once', 'Create the tables and the sample orders and FAQs'],
+    ['Supabase schema, already applied', 'Tables, sample orders and FAQs exist in the hosted project'],
     ['Microphone permission', 'Speak to the agent in the browser'],
     ['Approved content and a caller notice', 'Replace sample data before any client call'],
   ].map(([item, purpose]) => `<tr><td>${escapeHtml(item)}</td><td>${escapeHtml(purpose)}</td></tr>`).join('');
@@ -1432,9 +1447,9 @@ function journeyView() {
         <h1>Build journey</h1>
         <p class="page-sub">What each build stage delivered, how it was tested and
           what still needs external access. Stages 1 to 3 run on the local
-          prototype. Stage 4 runs in the browser through Vapi: one demo call was
-          placed with Vapi\u2019s sample assistant, while the project assistant
-          waits on valid hosting keys.</p>
+          prototype. Stage 4 is deployed through Vapi: the API functions, the hosted
+          tables and a setup page that builds the assistant are live, while the
+          project assistant waits on valid key values in the hosting project.</p>
       </div>
     </div>
 
@@ -1450,7 +1465,8 @@ function journeyView() {
     <div class="grid-2" style="margin-top:18px">
       <section class="panel" aria-labelledby="access-title">
         <h2 id="access-title">Access required for a live call</h2>
-        <p class="panel-note">Each item is needed before the first real call.</p>
+        <p class="panel-note">The key values are the remaining block. The schema,
+          API functions and setup page are already in place.</p>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Access</th><th>Purpose</th></tr></thead>
@@ -1462,10 +1478,10 @@ function journeyView() {
       <section class="panel" aria-labelledby="blocked-title">
         <h2 id="blocked-title">Still blocked</h2>
         <p class="panel-note" style="margin:0">
-          No phone line is connected. The API functions are deployed and one
-          browser demo call was placed on Vapi's sample assistant; the project
-          assistant still needs valid key values in Vercel before a call can run
-          on this page and be saved to the call log.
+          No phone line is connected. The API functions, the hosted tables and the setup
+          page are deployed; the project assistant still needs valid key values in Vercel
+          before a call can run on this page and be saved to the call log. A key-free link
+          to Vapi's own sample assistant is available, and those calls are not saved here.
         </p>
       </section>
     </div>`;
@@ -1717,7 +1733,7 @@ python -m src.dashboard</pre>
             <li>Dashboard HTTP check: 19 of 19 passed</li>
             <li>Static site check: 13 of 13 rendering checks passed</li>
             <li>Simulated call transcripts saved for the sample stages</li>
-            <li>Step A API check: 22 of 22 passed with stubbed services</li>
+            <li>Step A API check: 23 of 23 passed with stubbed services</li>
           </ul>
         </div>
       </div>
@@ -1859,7 +1875,7 @@ async function runSetupCheck() {
   try {
     const state = await fetchJson(`${VOICE_API}/setup`, { headers: { 'x-setup-token': token } });
     const rows = [
-      ['Vapi public key', state.vapiPublicKey],
+      ['Vapi public key', state.vapiPublicKey && !state.publicKeyIssue],
       ['Vapi private key', state.vapiPrivateKey],
       ['Webhook secret', state.vapiServerSecret],
       ['Supabase URL', state.supabaseUrl],
@@ -1871,9 +1887,16 @@ async function runSetupCheck() {
         .map((row) => setupRow(row[0], row[1]))
         .join('')}</ul>`,
     ];
-    if (state.publicKeyLooksMasked) {
+    if (state.publicKeyIssue === 'masked') {
       parts.push('<p>The stored public key is only bullet characters, so a masked copy was ' +
         'saved. Delete that variable in the hosting project and add it again with the real key.</p>');
+    } else if (state.publicKeyIssue === 'placeholder') {
+      parts.push('<p>The stored public key is not a key. It is ' +
+        `${state.publicKeyLength} characters of plain text, which is what placeholder typing ` +
+        'looks like. Delete the variable, add it again and paste the Public API key copied ' +
+        'from Vapi, then redeploy.</p>');
+    } else if (state.publicKeyIssue === 'empty') {
+      parts.push('<p>No Vapi public key is saved in the hosting project yet.</p>');
     }
     parts.push(state.vapiOk
       ? '<p class="muted">Vapi accepted the private key.</p>'
