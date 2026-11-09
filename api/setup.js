@@ -30,18 +30,35 @@ async function status(res) {
     }
   }
 
+  let supabaseStatus = 0;
+  const supabaseUrl = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  if (supabaseUrl && supabaseKey) {
+    try {
+      const probe = await fetch(`${supabaseUrl}/rest/v1/orders?select=order_id&limit=1`, {
+        headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+        signal: AbortSignal.timeout(8000),
+      });
+      supabaseStatus = probe.status;
+    } catch {
+      supabaseStatus = 0;
+    }
+  }
+
   json(res, 200, {
     vapiPublicKey: Boolean(publicKey),
     publicKeyIssue: publicKeyIssue(publicKey),
-    publicKeyLooksMasked: /^[\u2022\u00b7.\s]+$/.test(publicKey),
+    publicKeyLooksMasked: publicKeyIssue(publicKey) === 'masked',
     publicKeyLength: publicKey.length,
     vapiPrivateKey: Boolean(privateKey),
     vapiServerSecret: Boolean(process.env.VAPI_SERVER_SECRET || ''),
     assistantId,
     vapiStatus,
     vapiOk: vapiStatus >= 200 && vapiStatus < 300,
-    supabaseUrl: Boolean(process.env.SUPABASE_URL || ''),
-    supabaseServiceKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || ''),
+    supabaseUrl: Boolean(supabaseUrl),
+    supabaseServiceKey: Boolean(supabaseKey),
+    supabaseStatus,
+    supabaseOk: supabaseStatus >= 200 && supabaseStatus < 300,
   });
 }
 
