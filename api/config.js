@@ -1,6 +1,6 @@
 'use strict';
 
-const { json, sb } = require('./_lib');
+const { json, sb, publicKeyIssue } = require('./_lib');
 const { findAssistantId } = require('./_assistant');
 
 let cached = { id: '', at: 0 };
@@ -33,9 +33,12 @@ module.exports = async function handler(req, res) {
     assistantId = await resolveAssistantId();
   }
 
+  const keyIssue = publicKeyIssue(publicKey);
+
   json(res, 200, {
-    configured: Boolean(publicKey && assistantId),
+    configured: Boolean(assistantId) && !keyIssue,
     publicKey,
     assistantId,
+    keyIssue,
   });
 };

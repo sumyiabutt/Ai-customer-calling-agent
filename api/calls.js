@@ -172,6 +172,11 @@ module.exports = async function handler(req, res) {
     const calls = await listCalls();
     json(res, 200, { calls });
   } catch (error) {
-    json(res, 502, { error: error.message });
+    console.error('calls:', error.message);
+    const failed = ['Supabase', 'Vapi'].filter((name) => String(error.message).includes(name));
+    json(res, 502, {
+      error: 'Live call data is not reachable right now.',
+      ...(failed.length ? { unavailable: failed } : {}),
+    });
   }
 };

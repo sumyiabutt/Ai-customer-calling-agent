@@ -52,4 +52,12 @@ function baseUrl(req) {
   return `https://${host}`;
 }
 
-module.exports = { json, body, sb, maskSensitive, baseUrl };
+function publicKeyIssue(value) {
+  const key = String(value || '').trim();
+  if (!key) return 'empty';
+  if (/^[\u2022\u00b7.\s]+$/.test(key)) return 'masked';
+  if (!/^[A-Za-z0-9_-]{16,}$/.test(key)) return 'placeholder';
+  return '';
+}
+
+module.exports = { json, body, sb, maskSensitive, baseUrl, publicKeyIssue };

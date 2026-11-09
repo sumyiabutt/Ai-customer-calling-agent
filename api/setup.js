@@ -1,6 +1,6 @@
 'use strict';
 
-const { json, sb, baseUrl } = require('./_lib');
+const { json, sb, baseUrl, publicKeyIssue } = require('./_lib');
 const { assistantConfig, findAssistantId } = require('./_assistant');
 
 async function status(res) {
@@ -32,6 +32,7 @@ async function status(res) {
 
   json(res, 200, {
     vapiPublicKey: Boolean(publicKey),
+    publicKeyIssue: publicKeyIssue(publicKey),
     publicKeyLooksMasked: /^[\u2022\u00b7.\s]+$/.test(publicKey),
     publicKeyLength: publicKey.length,
     vapiPrivateKey: Boolean(privateKey),
