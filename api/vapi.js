@@ -189,18 +189,22 @@ async function saveReport(message) {
     artifact.transcript || turns.map((turn) => `${turn.role}: ${turn.text}`).join('\n')
   ).slice(0, 40000);
 
-  await saveCall({
+  const summary = maskSensitive(analysis.summary || '').slice(0, 500);
+  const patch = {
     vapi_call_id: callId,
     started_at: startedAt || (started ? started.toISOString() : null),
     ended_at: endedAt || (ended ? ended.toISOString() : null),
     duration_seconds: duration,
     caller_phone: call.type === 'webCall' ? 'Web call' : call.customer?.number || 'Unknown',
     customer_name: call.customer?.name || null,
-    transcript,
-    turns,
-    summary: maskSensitive(analysis.summary || '').slice(0, 500) || null,
     ended_reason: message.endedReason || null,
-  });
+  };
+  // Leave values already saved by log_call_outcome in place when the report has none.
+  if (summary) patch.summary = summary;
+  if (transcript) patch.transcript = transcript;
+  if (turns.length) patch.turns = turns;
+
+  await saveCall(patch);
 }
 
 module.exports = async function handler(req, res) {
