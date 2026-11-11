@@ -8,7 +8,13 @@
 
 'use strict';
 
-const DATA_TODAY = '2026-11-02';
+const DAY_MS = 86400000;
+const TODAY = (() => {
+  const now = new Date();
+  now.setUTCHours(0, 0, 0, 0);
+  return now;
+})();
+const DATA_TODAY = TODAY.toISOString().slice(0, 10);
 const TOTAL_TESTS = 104;
 const VOICE_API = '/api';
 const VOICE_DEMO_URL =
@@ -40,18 +46,38 @@ const REPLIES = {
   goodbye: "You're welcome. Thank you for calling Sample Store Support. Goodbye!",
 };
 
+function dateLabel(offsetDays) {
+  const date = new Date(TODAY.getTime() + offsetDays * DAY_MS);
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date);
+}
+
+function dateShort(offsetDays) {
+  const date = new Date(TODAY.getTime() + offsetDays * DAY_MS);
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date);
+}
+
 const ORDER_REPLIES = {
   'ORD-1001':
     'Order ORD-1001 is marked as Shipped. It left the warehouse and is with the ' +
-    'courier. Expected delivery: 30 October 2026. Tracking number: ' +
+    `courier. Expected delivery: ${dateLabel(2)}. Tracking number: ` +
     'TRK-SAMPLE-1001. Is there anything else I can help you with?',
   'ORD-1002':
     'Order ORD-1002 is marked as Processing. Payment is confirmed and the order ' +
-    'is being packed. Expected delivery: 2 November 2026. Is there anything ' +
+    `is being packed. Expected delivery: ${dateLabel(4)}. Is there anything ` +
     'else I can help you with?',
   'ORD-1003':
     'Order ORD-1003 is marked as Delivered. It was delivered to the address on ' +
-    'file on 26 October 2026. Tracking number: TRK-SAMPLE-1003. Is there ' +
+    `file on ${dateLabel(-6)}. Tracking number: TRK-SAMPLE-1003. Is there ` +
     'anything else I can help you with?',
   'ORD-1004':
     'Order ORD-1004 is marked as Out for delivery. It is with the delivery rider ' +
@@ -90,7 +116,19 @@ function turn(message, intent, reply, escalated) {
   return { message, intent, reply, escalated: Boolean(escalated) };
 }
 
-const CALLS = [
+const SAMPLE_DATA_END = new Date(TODAY.getTime() - DAY_MS).toISOString().slice(0, 10);
+
+function shiftSampleCalls(calls) {
+  const shift =
+    Date.parse(`${SAMPLE_DATA_END}T00:00:00Z`) - Date.parse('2026-11-02T00:00:00Z');
+  return calls.map((call) => ({
+    ...call,
+    started_at: new Date(Date.parse(call.started_at) + shift).toISOString(),
+    ended_at: new Date(Date.parse(call.ended_at) + shift).toISOString(),
+  }));
+}
+
+const CALLS = shiftSampleCalls([
   {
     id: 1,
     started_at: '2026-11-02T17:49:25Z',
@@ -284,7 +322,7 @@ const CALLS = [
       turn('Thank you', 'goodbye', REPLIES.goodbye),
     ],
   },
-];
+]);
 
 /* ---------- Derived data ---------- */
 
@@ -1423,13 +1461,13 @@ function homeView() {
       <div class="call-card-head">
         <div>
           <span class="cc-kicker">Call #1</span>
-          <span class="cc-sub">2 November 2026 &middot; 2m 45s &middot; sample data</span>
+          <span class="cc-sub">${dateLabel(0)} &middot; 2m 45s &middot; sample data</span>
         </div>
         ${badge('transferred')}
       </div>
       <div class="cc-turn">
         <p class="cc-said"><span class="cc-who">Customer</span>Where is my order ORD-1002?</p>
-        <p class="cc-reply"><span class="cc-intent">order status</span>Order ORD-1002 is marked as Processing. Payment is confirmed and the order is being packed. Expected delivery: 2 November 2026.</p>
+        <p class="cc-reply"><span class="cc-intent">order status</span>${ORDER_REPLIES['ORD-1002']}</p>
       </div>
       <div class="cc-turn">
         <p class="cc-said"><span class="cc-who">Customer</span>How long does delivery take?</p>
@@ -1573,7 +1611,7 @@ function dashboardView() {
       <div>
         <h1>Dashboard</h1>
         <p class="page-sub">Live browser calls next to the ${STATS.total} sample
-          records from 27 October to 2 November 2026. Every row says which kind it
+          records from ${dateLabel(-6)} to ${dateLabel(-1)}. Every row says which kind it
           is. No audio is recorded.</p>
       </div>
       <div class="page-actions">
@@ -1585,7 +1623,7 @@ function dashboardView() {
       <div class="card">
         <div class="value">${STATS.total}</div>
         <div class="label">Sample calls</div>
-        <div class="detail">27 Oct to 2 Nov 2026</div>
+        <div class="detail">${dateShort(-6)} to ${dateShort(-1)}</div>
       </div>
       <div class="card">
         <div class="value">${STATS.escalated}</div>
