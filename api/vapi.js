@@ -172,12 +172,17 @@ async function saveReport(message) {
   const callId = call.id || message.callId;
   if (!callId) return;
 
-  const started = call.startedAt ? new Date(call.startedAt) : null;
-  const ended = call.endedAt ? new Date(call.endedAt) : null;
+  // Vapi sends the call window on the report message; older payloads only had it on call.
+  const startedAt = call.startedAt || message.startedAt || null;
+  const endedAt = call.endedAt || message.endedAt || null;
+  const started = startedAt ? new Date(startedAt) : null;
+  const ended = endedAt ? new Date(endedAt) : null;
   const duration =
     started && ended && !Number.isNaN(started.getTime()) && !Number.isNaN(ended.getTime())
       ? Math.max(0, Math.round((ended.getTime() - started.getTime()) / 1000))
-      : null;
+      : typeof message.durationSeconds === 'number'
+        ? Math.round(message.durationSeconds)
+        : null;
 
   const turns = turnsFrom(artifact.messages);
   const transcript = maskSensitive(
@@ -186,8 +191,8 @@ async function saveReport(message) {
 
   await saveCall({
     vapi_call_id: callId,
-    started_at: call.startedAt || (started ? started.toISOString() : null),
-    ended_at: call.endedAt || (ended ? ended.toISOString() : null),
+    started_at: startedAt || (started ? started.toISOString() : null),
+    ended_at: endedAt || (ended ? ended.toISOString() : null),
     duration_seconds: duration,
     caller_phone: call.type === 'webCall' ? 'Web call' : call.customer?.number || 'Unknown',
     customer_name: call.customer?.name || null,
