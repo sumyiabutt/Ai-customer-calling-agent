@@ -44,6 +44,14 @@ const REPLIES = {
     '9 AM to 6 PM; Saturday from 10 AM to 2 PM; closed on Sunday (Asia/Karachi). ' +
     'A colleague will be with you shortly.',
   goodbye: "You're welcome. Thank you for calling Sample Store Support. Goodbye!",
+  callbackAsk:
+    'I can arrange a callback from our team. Please share your name and phone ' +
+    'number in one message, for example: Ali, 0300 1234567.',
+  callbackSaved:
+    'Thank you. I have saved your details and our team will call you back. Goodbye!',
+  callbackInvalid:
+    'I need a phone number with at least seven digits. Please send your name and ' +
+    'number together, for example: Ali, 0300 1234567.',
 };
 
 function dateLabel(offsetDays) {
@@ -1068,6 +1076,8 @@ const demoVoice = {
   lastLatency: 0,
   micBlocked: false,
   handoffReason: '',
+  awaitingCallback: false,
+  callbackDetails: '',
 };
 
 function demoSpeechClass() {
@@ -1106,7 +1116,7 @@ function demoAnswer(text) {
     };
   }
   if (/(human|agent|manager|representative|operator)/.test(said)) {
-    return { intent: 'handoff', reply: REPLIES.handoff };
+    return { intent: 'handoff', reply: REPLIES.callbackAsk };
   }
   if (/(hour|open|close|timing|timings|what time)/.test(said)) {
     return { intent: 'business_hours', reply: REPLIES.hours };
@@ -1219,6 +1229,11 @@ function demoHandleTurn(said) {
   appendDockTurn('Customer', said);
   demoVoice.turns.push({ role: 'customer', text: said });
 
+  if (demoVoice.awaitingCallback) {
+    demoHandleCallback(said);
+    return;
+  }
+
   const answer = demoAnswer(said);
   const missed = answer.intent === 'fallback' || answer.intent === 'empty';
   demoVoice.strikes = missed ? demoVoice.strikes + 1 : 0;
@@ -1233,6 +1248,7 @@ function demoHandleTurn(said) {
   } else if (answer.intent === 'handoff') {
     demoVoice.outcome = 'escalated';
     demoVoice.handoffReason = 'Customer asked for a human';
+    demoVoice.awaitingCallback = true;
   } else if (['order_status', 'faq', 'business_hours', 'greeting'].includes(answer.intent)) {
     demoVoice.outcome = 'resolved';
   }
@@ -1241,6 +1257,28 @@ function demoHandleTurn(said) {
   demoVoice.turns.push({ role: 'agent', text: reply });
   demoVoice.pendingAt = performance.now();
   demoSpeak(reply, finished ? () => endDemoCall() : null);
+}
+
+function demoHandleCallback(said) {
+  const text = String(said || '').trim();
+  const digits = (text.match(/\d/g) || []).length;
+  const valid = digits >= 7;
+
+  if (!valid) {
+    appendDockTurn('Agent', REPLIES.callbackInvalid);
+    demoVoice.turns.push({ role: 'agent', text: REPLIES.callbackInvalid });
+    demoVoice.pendingAt = performance.now();
+    demoSpeak(REPLIES.callbackInvalid);
+    return;
+  }
+
+  demoVoice.awaitingCallback = false;
+  demoVoice.callbackDetails = text.slice(0, 60);
+  demoVoice.outcome = 'escalated';
+  appendDockTurn('Agent', REPLIES.callbackSaved);
+  demoVoice.turns.push({ role: 'agent', text: REPLIES.callbackSaved });
+  demoVoice.pendingAt = performance.now();
+  demoSpeak(REPLIES.callbackSaved, () => endDemoCall());
 }
 
 function demoTypeTurn() {
@@ -1290,6 +1328,8 @@ async function startDemoCall() {
     lastLatency: 0,
     micBlocked: !demoSpeechClass(),
     handoffReason: '',
+    awaitingCallback: false,
+    callbackDetails: '',
   });
 
   const mute = document.getElementById('call-mute');
@@ -1330,7 +1370,7 @@ async function startDemoCall() {
   const greeting =
     'Hello! This is the browser voice demo. I can check a sample order from ' +
     'ORD-1001 to ORD-1005, share business hours, answer delivery or return ' +
-    'questions, or pass you to a human. How can I help?';
+    'questions, or arrange a callback from our team. How can I help?';
   appendDockTurn('Agent', greeting);
   demoVoice.turns.push({ role: 'agent', text: greeting });
   demoSpeak(greeting);
@@ -1360,10 +1400,12 @@ function endDemoCall(message) {
   const lastCustomer = customers.length
     ? String(customers[customers.length - 1].text).slice(0, 30)
     : '';
-  const summary = demoVoice.handoffReason
-    ? `${demoVoice.handoffReason} \u2014 "${lastCustomer}"`
-    : (customers.length ? String(customers[customers.length - 1].text).slice(0, 70)
-      : 'No customer speech was captured.');
+  const summary = demoVoice.callbackDetails
+    ? `Callback requested: ${demoVoice.callbackDetails}`
+    : demoVoice.handoffReason
+      ? `${demoVoice.handoffReason} \u2014 "${lastCustomer}"`
+      : (customers.length ? String(customers[customers.length - 1].text).slice(0, 70)
+        : 'No customer speech was captured.');
 
   saveDemoCall({
     id: `demo-${started}`,
