@@ -5,7 +5,7 @@
  * Live calls come from the Vapi browser agent through the /api functions and
  * are labelled separately. No call audio is stored.
  *
- * Build: 2026-11-11 18:13 UTC.
+ * Build: 2026-11-11 18:17 UTC.
  */
 
 'use strict';
@@ -720,8 +720,9 @@ function renderLivePanel() {
     const offline = /404|Failed to fetch|NetworkError/i.test(liveCallsError);
     target.innerHTML = (offline
       ? '<div class="empty">Live calling needs the Vercel API deployment. This copy of the site shows sample data only.</div>'
-      : '<div class="empty">Live calls are not connected yet: the hosted keys are still being set up. ' +
-        'The sample records below are unchanged. <a href="#/setup">Open hosted setup</a></div>') + local;
+      : '<div class="empty">Live calls are not connected yet: the hosted Vapi key is not ' +
+        'accepted yet. The sample records below are unchanged. ' +
+        '<a href="#/setup">Open hosted setup</a></div>') + local;
     return;
   }
   if (!liveCalls.length) {
@@ -1621,7 +1622,7 @@ function homeView() {
         <h2>Not connected yet</h2>
         <ul class="scope-list no">
           <li>Real phone number and public telephony line</li>
-          <li>Project-assistant test call: valid Vapi and Supabase key values are still missing in Vercel</li>
+          <li>Project-assistant test call: the Vapi private key saved in Vercel is not accepted yet</li>
           <li>Urdu and mixed Urdu-English speech</li>
           <li>Client CRM or order API (sample orders stand in)</li>
           <li>Call recordings, audio storage and playback (not stored by design)</li>
@@ -1891,7 +1892,7 @@ function journeyView() {
     </article>`).join('');
 
   const nextSteps = [
-    'Add valid Vapi and Supabase key values in Vercel, redeploy, then run the hosted setup page to create the assistant.',
+    'Replace the Vapi private key in Vercel, redeploy, then run the hosted setup page to create the assistant.',
     'Run the first live test calls: order status, FAQ and escalation, with latency measured.',
     'Add Urdu and mixed Urdu-English speech.',
     'Put server-side admin and viewer login in front of the live-call API.',
@@ -1918,8 +1919,8 @@ function journeyView() {
           what still needs external access. Stages 1 to 3 run on the local
           prototype. Stage 4 is deployed through Vapi: the API functions, the hosted
           tables and a setup page that builds the assistant are live, and a key-free
-          browser voice demo runs today, while the project assistant waits on valid
-          key values in the hosting project.</p>
+          browser voice demo runs today, while the project assistant waits on a valid
+          Vapi private key in the hosting project.</p>
       </div>
     </div>
 
@@ -1935,9 +1936,9 @@ function journeyView() {
     <div class="grid-2" style="margin-top:18px">
       <section class="panel" aria-labelledby="access-title">
         <h2 id="access-title">Access required for a live call</h2>
-        <p class="panel-note">The key values are the remaining block for the Vapi
-          call. The schema, API functions and setup page are already in place, and the
-          browser demo runs without any keys.</p>
+        <p class="panel-note">The Vapi private key is the remaining block for the Vapi
+          call. The schema, API functions, public key and setup page are already in place,
+          and the browser demo runs without any keys.</p>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Access</th><th>Purpose</th></tr></thead>
@@ -1950,8 +1951,8 @@ function journeyView() {
         <h2 id="blocked-title">Still blocked</h2>
         <p class="panel-note" style="margin:0">
           No phone line is connected. The API functions, the hosted tables and the setup
-          page are deployed; the project assistant still needs valid key values in Vercel
-          before a Vapi call can run on this page and be saved to the hosted call log.
+          page are deployed; the project assistant still needs a valid Vapi private key
+          in Vercel before a Vapi call can run on this page and be saved to the hosted call log.
           Until then, the browser demo runs without keys in the call dock, and its calls
           are labelled on-device. A key-free link to Vapi's own sample assistant is also
           available, and those calls are not saved here.
