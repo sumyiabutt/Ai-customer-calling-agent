@@ -5,7 +5,7 @@
  * Live calls come from the Vapi browser agent through the /api functions and
  * are labelled separately. No call audio is stored.
  *
- * Build: 2026-11-11 19:02 UTC.
+ * Build: 2026-11-11 19:27 UTC.
  */
 
 'use strict';
