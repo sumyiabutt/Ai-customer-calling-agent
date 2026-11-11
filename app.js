@@ -4,6 +4,8 @@
  * how it works, testing. Sample call records reproduce the captured stages.
  * Live calls come from the Vapi browser agent through the /api functions and
  * are labelled separately. No call audio is stored.
+ *
+ * Build: 2026-11-11 18:13 UTC.
  */
 
 'use strict';
