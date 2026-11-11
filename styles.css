@@ -1531,3 +1531,17 @@ nav .nav-call:hover { background: #0c5740; }
 .setup-result code { word-break: break-all; }
 
 .dock-demo + .dock-demo { margin-left: 12px; }
+
+.dock-demo-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dock-demo-button:hover { text-decoration: underline; }

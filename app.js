@@ -626,25 +626,57 @@ function liveCallsPanel() {
     </section>`;
 }
 
+function demoCallsBlock() {
+  const local = readDemoCalls();
+  if (!local.length) return '';
+  const rows = local.slice(0, 10).map((call) => `
+    <tr>
+      <td>${escapeHtml(String(call.id || '').replace('demo-', '').slice(-6))}</td>
+      <td>${formatShortTime(call.started_at)}</td>
+      <td class="phone">${escapeHtml(call.caller_phone || 'On-device mic')}</td>
+      <td>${formatDuration(call.duration_seconds)}</td>
+      <td>${badge(call.outcome || 'info_only')}</td>
+      <td>${shortText(call.summary || 'Browser demo call', 70)}</td>
+    </tr>`).join('');
+
+  return `
+    <p class="panel-note" style="margin-top:14px">Browser demo calls saved on this device:</p>
+    <div class="table-wrap">
+      <table class="calls-table">
+        <thead>
+          <tr><th>Call</th><th>Started</th><th>Source</th><th>Duration</th>
+            <th>Outcome</th><th>Summary</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <p class="panel-note">The browser demo runs on this device with the browser's own
+      speech engine. These calls are not sent to Vapi or Supabase, and audio is never
+      stored.</p>`;
+}
+
 function renderLivePanel() {
   const target = document.getElementById('live-panel');
   if (!target) return;
 
+  const local = demoCallsBlock();
+
   if (liveCallsState === 'loading' || liveCallsState === 'idle') {
-    target.innerHTML = '<div class="empty">Loading live calls\u2026</div>';
+    target.innerHTML = '<div class="empty">Loading live calls\u2026</div>' + local;
     return;
   }
   if (liveCallsState === 'error') {
     const offline = /404|Failed to fetch|NetworkError/i.test(liveCallsError);
-    target.innerHTML = offline
+    target.innerHTML = (offline
       ? '<div class="empty">Live calling needs the Vercel API deployment. This copy of the site shows sample data only.</div>'
       : '<div class="empty">Live calls are not connected yet: the hosted keys are still being set up. ' +
-        'The sample records below are unchanged. <a href="#/setup">Open hosted setup</a></div>';
+        'The sample records below are unchanged. <a href="#/setup">Open hosted setup</a></div>') + local;
     return;
   }
   if (!liveCalls.length) {
     target.innerHTML =
-      '<div class="empty">No live calls yet. Use \u201cTalk to the agent\u201d to make the first one.</div>';
+      '<div class="empty">No live calls yet. Use \u201cTalk to the agent\u201d to make the first one.' +
+      '</div>' + local;
     return;
   }
 
@@ -667,7 +699,7 @@ function renderLivePanel() {
         </thead>
         <tbody>${rows}</tbody>
       </table>
-    </div>`;
+    </div>` + local;
 }
 
 function shortId(id) {
@@ -800,7 +832,7 @@ function setCallControls(active) {
 }
 
 function clearDockDemoLink() {
-  ['call-demo-link', 'call-setup-link'].forEach((id) => {
+  ['call-demo-link', 'call-setup-link', 'call-browser-demo'].forEach((id) => {
     const link = document.getElementById(id);
     if (link) link.remove();
   });
@@ -899,6 +931,7 @@ async function startLiveCall() {
       }
       showDockDemoLink();
       showDockSetupLink();
+      showDockBrowserDemo();
       return;
     }
 
@@ -984,9 +1017,334 @@ function toggleMute() {
 }
 
 function closeDock() {
+  if (demoVoice.active) endDemoCall();
   stopLiveCall();
   const node = document.getElementById('call-dock');
   if (node) node.hidden = true;
+}
+
+/* ---------- On-device browser voice demo ----------
+ * Runs entirely in this browser: the Web Speech API listens and speaks, and the
+ * answers come from the same sample orders and FAQs as the sample calls. No keys
+ * and no upload; audio is never stored.
+ */
+
+const DEMO_STORE = 'shopeasy.browserDemoCalls';
+
+const demoVoice = {
+  active: false,
+  recognition: null,
+  listening: false,
+  muted: false,
+  speaking: false,
+  strikes: 0,
+  startedAt: 0,
+  timer: null,
+  turns: [],
+  outcome: 'info_only',
+  pendingAt: 0,
+  lastLatency: 0,
+};
+
+function demoSpeechClass() {
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+function browserVoiceSupported() {
+  return Boolean(demoSpeechClass() && window.speechSynthesis);
+}
+
+function readDemoCalls() {
+  try {
+    const raw = localStorage.getItem(DEMO_STORE);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDemoCall(row) {
+  try {
+    localStorage.setItem(DEMO_STORE, JSON.stringify([row, ...readDemoCalls()].slice(0, 20)));
+  } catch {
+    // storage can be disabled; the call still runs
+  }
+}
+
+function demoAnswer(text) {
+  const said = String(text || '').toLowerCase().trim();
+  if (!said) return { intent: 'empty', reply: REPLIES.fallback };
+
+  const match = said.match(/ord[-\s]?(\d{4})/i);
+  if (match) {
+    const id = `ORD-${match[1]}`;
+    return {
+      intent: 'order_status',
+      reply: ORDER_REPLIES[id] ||
+        'I could not find that order in the sample data. The sample orders are ORD-1001 to ORD-1005.',
+    };
+  }
+  if (/(human|agent|manager|representative|operator)/.test(said)) {
+    return { intent: 'handoff', reply: REPLIES.handoff };
+  }
+  if (/(hour|open|close|timing|timings|what time)/.test(said)) {
+    return { intent: 'business_hours', reply: REPLIES.hours };
+  }
+  if (/(return|refund|exchange)/.test(said)) {
+    return { intent: 'faq', reply: FAQ_REPLIES.returns };
+  }
+  if (/(charge|fee|cost|price|free delivery)/.test(said)) {
+    return { intent: 'faq', reply: FAQ_REPLIES.charges };
+  }
+  if (/(pay|payment|card|cash|cod)/.test(said)) {
+    return { intent: 'faq', reply: FAQ_REPLIES.payment };
+  }
+  if (/(deliver|shipping|dispatch|how long|courier)/.test(said)) {
+    return { intent: 'faq', reply: FAQ_REPLIES.shipping };
+  }
+  if (/(order|parcel|package|track)/.test(said)) {
+    return { intent: 'order_status', reply: REPLIES.askOrder };
+  }
+  if (/^(hi|hello|hey|salam|assalam|good (morning|afternoon|evening))/.test(said)) {
+    return { intent: 'greeting', reply: REPLIES.greeting };
+  }
+  if (/(bye|goodbye|thank|thanks|shukriya)/.test(said)) {
+    return { intent: 'goodbye', reply: REPLIES.goodbye };
+  }
+  return { intent: 'fallback', reply: REPLIES.fallback };
+}
+
+function demoSpeak(text, done) {
+  if (!window.speechSynthesis) {
+    if (done) done();
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'en-US';
+  utterance.rate = 1;
+  utterance.onstart = () => {
+    demoVoice.speaking = true;
+    if (demoVoice.pendingAt) {
+      demoVoice.lastLatency = Math.round(performance.now() - demoVoice.pendingAt);
+      demoVoice.pendingAt = 0;
+    }
+  };
+  utterance.onend = () => {
+    demoVoice.speaking = false;
+    if (done) done();
+    else if (demoVoice.active && !demoVoice.muted) demoListen();
+  };
+  window.speechSynthesis.speak(utterance);
+}
+
+function demoListen() {
+  if (!demoVoice.active || demoVoice.muted || demoVoice.listening) return;
+  const Speech = demoSpeechClass();
+  if (!Speech) return;
+
+  const recognition = new Speech();
+  recognition.lang = 'en-US';
+  recognition.interimResults = true;
+  recognition.continuous = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    demoVoice.listening = true;
+    setDockNote('Listening\u2026 speak now.');
+  };
+  recognition.onresult = (event) => {
+    const result = event.results[event.results.length - 1];
+    if (!result.isFinal) {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        demoVoice.speaking = false;
+        setDockNote('You interrupted. Listening\u2026');
+      }
+      return;
+    }
+    const said = String(result[0].transcript || '').trim();
+    demoVoice.listening = false;
+    try { recognition.stop(); } catch { /* already stopped */ }
+    if (said) demoHandleTurn(said);
+  };
+  recognition.onerror = (event) => {
+    demoVoice.listening = false;
+    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+      endDemoCall('Microphone access was blocked. Allow the microphone for this site, then start again.');
+    } else if (event.error === 'no-speech' && demoVoice.active) {
+      setDockNote('I did not hear anything. Try again, or press End call.');
+    }
+  };
+  recognition.onend = () => {
+    demoVoice.listening = false;
+    if (demoVoice.active && !demoVoice.speaking && !demoVoice.muted) {
+      window.setTimeout(() => demoListen(), 600);
+    }
+  };
+
+  demoVoice.recognition = recognition;
+  try { recognition.start(); } catch { demoVoice.listening = false; }
+}
+
+function demoHandleTurn(said) {
+  appendDockTurn('Customer', said);
+  demoVoice.turns.push({ role: 'customer', text: said });
+
+  const answer = demoAnswer(said);
+  const missed = answer.intent === 'fallback' || answer.intent === 'empty';
+  demoVoice.strikes = missed ? demoVoice.strikes + 1 : 0;
+
+  let reply = answer.reply;
+  let finished = false;
+  if (demoVoice.strikes >= 3) {
+    reply = REPLIES.autoHandoff;
+    demoVoice.outcome = 'escalated';
+    finished = true;
+  } else if (answer.intent === 'handoff') {
+    demoVoice.outcome = 'escalated';
+  } else if (['order_status', 'faq', 'business_hours', 'greeting'].includes(answer.intent)) {
+    demoVoice.outcome = 'resolved';
+  }
+
+  appendDockTurn('Agent', reply);
+  demoVoice.turns.push({ role: 'agent', text: reply });
+  demoVoice.pendingAt = performance.now();
+  demoSpeak(reply, finished ? () => endDemoCall() : null);
+}
+
+function startDemoCall() {
+  if (demoVoice.active) return;
+  const node = ensureDock();
+  node.hidden = false;
+  clearDockDemoLink();
+  if (dock.vapi) stopLiveCall();
+
+  if (!browserVoiceSupported()) {
+    setDockStatus('Browser limit', 'warn');
+    setDockNote('This browser has no on-device speech engine. Use Chrome or Edge for the demo; the Vapi assistant needs hosting keys.');
+    setCallControls(false);
+    return;
+  }
+
+  const transcript = document.getElementById('call-transcript');
+  if (transcript) transcript.innerHTML = '';
+  const title = document.querySelector('#call-dock .dock-title');
+  if (title) title.textContent = 'Browser voice demo';
+
+  Object.assign(demoVoice, {
+    active: true,
+    muted: false,
+    speaking: false,
+    strikes: 0,
+    startedAt: Date.now(),
+    turns: [],
+    outcome: 'info_only',
+    pendingAt: 0,
+    lastLatency: 0,
+  });
+
+  const mute = document.getElementById('call-mute');
+  if (mute) {
+    mute.textContent = 'Mute';
+    mute.setAttribute('aria-pressed', 'false');
+  }
+  setCallControls(true);
+  setDockStatus('Demo \u00b7 0:00', 'live');
+  setDockNote('On-device demo: your browser listens and speaks. Nothing is uploaded and no audio is stored.');
+
+  stopDockTimer();
+  demoVoice.timer = window.setInterval(() => {
+    if (!demoVoice.active) return;
+    const seconds = Math.floor((Date.now() - demoVoice.startedAt) / 1000);
+    const latency = demoVoice.lastLatency ? ` \u00b7 reply ${demoVoice.lastLatency} ms` : '';
+    setDockStatus(`Demo \u00b7 ${formatDuration(seconds)}${latency}`, 'live');
+  }, 1000);
+
+  const greeting =
+    'Hello! This is the browser voice demo. I can check a sample order from ' +
+    'ORD-1001 to ORD-1005, share business hours, answer delivery or return ' +
+    'questions, or pass you to a human. How can I help?';
+  appendDockTurn('Agent', greeting);
+  demoVoice.turns.push({ role: 'agent', text: greeting });
+  demoSpeak(greeting);
+}
+
+function endDemoCall(message) {
+  if (!demoVoice.active) return;
+  demoVoice.active = false;
+  demoVoice.muted = false;
+  if (demoVoice.recognition) {
+    try { demoVoice.recognition.stop(); } catch { /* already stopped */ }
+    demoVoice.recognition = null;
+  }
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  if (demoVoice.timer) window.clearInterval(demoVoice.timer);
+  demoVoice.timer = null;
+  demoVoice.speaking = false;
+  setCallControls(false);
+
+  const started = demoVoice.startedAt || Date.now();
+  const ended = Date.now();
+  const turns = demoVoice.turns.slice();
+  const customers = turns.filter((item) => item.role === 'customer');
+  const outcome = demoVoice.outcome ||
+    (customers.length ? 'info_only' : 'abandoned');
+
+  saveDemoCall({
+    id: `demo-${started}`,
+    started_at: new Date(started).toISOString(),
+    ended_at: new Date(ended).toISOString(),
+    created_at: new Date(ended).toISOString(),
+    duration_seconds: Math.round((ended - started) / 1000),
+    caller_phone: 'On-device mic',
+    transcript: turns.map((item) => `${item.role === 'customer' ? 'Customer' : 'Agent'}: ${item.text}`).join('\n'),
+    turns,
+    summary: customers.length ? shortText(customers[customers.length - 1].text, 70) : 'No customer speech was captured.',
+    outcome,
+    source: 'on-device',
+  });
+
+  const title = document.querySelector('#call-dock .dock-title');
+  if (title) title.textContent = 'Sumyia \u00b7 ShopEasy';
+  setDockStatus('Demo ended', '');
+  setDockNote(message ||
+    'Saved on this device only. The dashboard lists it under Live calls, labelled on-device.');
+  renderLivePanel();
+}
+
+function toggleDemoMute() {
+  const button = document.getElementById('call-mute');
+  demoVoice.muted = !demoVoice.muted;
+  if (demoVoice.muted) {
+    if (demoVoice.recognition) {
+      try { demoVoice.recognition.stop(); } catch { /* already stopped */ }
+      demoVoice.recognition = null;
+    }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    demoVoice.speaking = false;
+    setDockNote('Microphone muted. Press Unmute to continue.');
+  } else {
+    setDockNote('Listening\u2026 speak now.');
+    demoListen();
+  }
+  if (button) {
+    button.setAttribute('aria-pressed', String(demoVoice.muted));
+    button.textContent = demoVoice.muted ? 'Unmute' : 'Mute';
+  }
+}
+
+function showDockBrowserDemo() {
+  const note = document.getElementById('call-note');
+  if (!note || document.getElementById('call-browser-demo')) return;
+  const button = document.createElement('button');
+  button.id = 'call-browser-demo';
+  button.className = 'dock-demo dock-demo-button';
+  button.type = 'button';
+  button.textContent = 'Start the browser voice demo (no keys)';
+  button.addEventListener('click', () => startDemoCall());
+  note.insertAdjacentElement('afterend', button);
 }
 
 /* ---------- Home ---------- */
@@ -1091,11 +1449,13 @@ function homeView() {
           finished call is saved to the dashboard with its transcript and outcome.</p>
         <p class="live-band-note">Browser calls only: no phone number is connected.
           Urdu and mixed-language speech are the next step. Audio is never stored.
-          The second button opens Vapi's own sample assistant, not Sumyia, and its
-          calls are not saved to this dashboard.</p>
+          The browser voice demo runs on this device with its own speech engine and
+          needs no keys. The last button opens Vapi's own sample assistant, not
+          Sumyia, and its calls are not saved to this dashboard.</p>
       </div>
       <div class="live-band-actions">
         <button class="btn btn-live" type="button" data-action="talk">Talk to the agent</button>
+        <button class="btn btn-ghost" type="button" data-action="demo-talk">Browser voice demo (no keys)</button>
         <a class="btn btn-ghost" href="${VOICE_DEMO_URL}" target="_blank" rel="noopener">Vapi sample call (not Sumyia)</a>
         <a class="btn btn-ghost" href="#/dashboard">See live calls</a>
       </div>
@@ -2069,12 +2429,22 @@ document.addEventListener('click', (event) => {
     startLiveCall();
     return;
   }
+  if (event.target.closest('[data-action="demo-talk"]')) {
+    startDemoCall();
+    return;
+  }
+  if (event.target.closest('#call-browser-demo')) {
+    startDemoCall();
+    return;
+  }
   if (event.target.closest('#call-mute')) {
-    toggleMute();
+    if (demoVoice.active) toggleDemoMute();
+    else toggleMute();
     return;
   }
   if (event.target.closest('#call-end')) {
-    stopLiveCall();
+    if (demoVoice.active) endDemoCall();
+    else stopLiveCall();
     return;
   }
   if (event.target.closest('#call-close')) {
