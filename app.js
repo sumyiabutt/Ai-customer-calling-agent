@@ -5,7 +5,7 @@
  * Live calls come from the Vapi browser agent through the /api functions and
  * are labelled separately. No call audio is stored.
  *
- * Build: 2026-11-11 18:53 UTC.
+ * Build: 2026-11-11 18:57 UTC.
  */
 
 'use strict';
@@ -474,7 +474,7 @@ const WEEKS = [
       '23 offline API checks, plus a hosted setup page that creates the assistant from this code',
     ],
     evidence: '23 API checks + live browser demo',
-    pending: 'Vapi-hosted assistant test call: the Vapi public, private and Supabase service keys still need valid values in Vercel. The browser demo runs today without keys.',
+    pending: 'The first calls from this page with the project assistant. The keys and the assistant are in place; the browser demo runs without keys.',
     link: { label: 'Live calls in the dashboard', href: '#/dashboard' },
   },
 ];
@@ -720,9 +720,8 @@ function renderLivePanel() {
     const offline = /404|Failed to fetch|NetworkError/i.test(liveCallsError);
     target.innerHTML = (offline
       ? '<div class="empty">Live calling needs the Vercel API deployment. This copy of the site shows sample data only.</div>'
-      : '<div class="empty">Live calls are not connected yet: the hosted Vapi key is not ' +
-        'accepted yet. The sample records below are unchanged. ' +
-        '<a href="#/setup">Open hosted setup</a></div>') + local;
+      : '<div class="empty">Live calls cannot be read right now. The sample records below ' +
+        'are unchanged. <a href="#/setup">Open hosted setup</a></div>') + local;
     return;
   }
   if (!liveCalls.length) {
@@ -1552,11 +1551,10 @@ function homeView() {
       <div>
         <p class="section-kicker">Live voice agent</p>
         <h2>Talk to Sumyia in the browser</h2>
-        <p>Press the button: if the hosted Vapi keys are present the call runs on Vapi,
-          otherwise the same page starts the on-device browser demo. Allow the
-          microphone to speak in English, or type in the dock if the microphone is
-          blocked. Every finished call is saved to the dashboard with its transcript
-          and outcome.</p>
+        <p>Press the button to start a live call with the Vapi assistant, and allow the
+          microphone when the browser asks. If the hosted setup is incomplete, the same
+          page starts the on-device browser demo instead. Every finished call is saved
+          to the dashboard with its transcript and outcome.</p>
         <p class="live-band-note">Browser calls only: no phone number is connected.
           Urdu and mixed-language speech are the next step. Audio is never stored.
           The browser demo uses the browser's own speech engine and needs no keys.
@@ -1622,7 +1620,6 @@ function homeView() {
         <h2>Not connected yet</h2>
         <ul class="scope-list no">
           <li>Real phone number and public telephony line</li>
-          <li>Project-assistant test call: the Vapi private key saved in Vercel is not accepted yet</li>
           <li>Urdu and mixed Urdu-English speech</li>
           <li>Client CRM or order API (sample orders stand in)</li>
           <li>Call recordings, audio storage and playback (not stored by design)</li>
@@ -1892,7 +1889,6 @@ function journeyView() {
     </article>`).join('');
 
   const nextSteps = [
-    'Replace the Vapi private key in Vercel, redeploy, then run the hosted setup page to create the assistant.',
     'Run the first live test calls: order status, FAQ and escalation, with latency measured.',
     'Add Urdu and mixed Urdu-English speech.',
     'Put server-side admin and viewer login in front of the live-call API.',
@@ -1918,9 +1914,8 @@ function journeyView() {
         <p class="page-sub">What each build stage delivered, how it was tested and
           what still needs external access. Stages 1 to 3 run on the local
           prototype. Stage 4 is deployed through Vapi: the API functions, the hosted
-          tables and a setup page that builds the assistant are live, and a key-free
-          browser voice demo runs today, while the project assistant waits on a valid
-          Vapi private key in the hosting project.</p>
+          tables and the project assistant are live, and a key-free browser voice demo
+          runs alongside it.</p>
       </div>
     </div>
 
@@ -1936,9 +1931,9 @@ function journeyView() {
     <div class="grid-2" style="margin-top:18px">
       <section class="panel" aria-labelledby="access-title">
         <h2 id="access-title">Access required for a live call</h2>
-        <p class="panel-note">The Vapi private key is the remaining block for the Vapi
-          call. The schema, API functions, public key and setup page are already in place,
-          and the browser demo runs without any keys.</p>
+        <p class="panel-note">The Vapi keys, the hosted tables and the project assistant
+          are in place, so a browser call runs on Vapi and is saved to the hosted call
+          log. The browser demo still runs without any keys.</p>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Access</th><th>Purpose</th></tr></thead>
@@ -1950,11 +1945,10 @@ function journeyView() {
       <section class="panel" aria-labelledby="blocked-title">
         <h2 id="blocked-title">Still blocked</h2>
         <p class="panel-note" style="margin:0">
-          No phone line is connected. The API functions, the hosted tables and the setup
-          page are deployed; the project assistant still needs a valid Vapi private key
-          in Vercel before a Vapi call can run on this page and be saved to the hosted call log.
-          Until then, the browser demo runs without keys in the call dock, and its calls
-          are labelled on-device. A key-free link to Vapi's own sample assistant is also
+          No phone line is connected. The API functions, the hosted tables and the
+          project assistant are live, so a browser call runs on Vapi and is saved to the
+          hosted call log. Calls that run in the browser demo stay on-device and are
+          labelled there. A key-free link to Vapi's own sample assistant is also
           available, and those calls are not saved here.
         </p>
       </section>
