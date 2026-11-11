@@ -1067,6 +1067,7 @@ const demoVoice = {
   pendingAt: 0,
   lastLatency: 0,
   micBlocked: false,
+  handoffReason: '',
 };
 
 function demoSpeechClass() {
@@ -1227,9 +1228,11 @@ function demoHandleTurn(said) {
   if (demoVoice.strikes >= 3) {
     reply = REPLIES.autoHandoff;
     demoVoice.outcome = 'escalated';
+    demoVoice.handoffReason = 'Escalated after 3 failed turns';
     finished = true;
   } else if (answer.intent === 'handoff') {
     demoVoice.outcome = 'escalated';
+    demoVoice.handoffReason = 'Customer asked for a human';
   } else if (['order_status', 'faq', 'business_hours', 'greeting'].includes(answer.intent)) {
     demoVoice.outcome = 'resolved';
   }
@@ -1286,6 +1289,7 @@ async function startDemoCall() {
     pendingAt: 0,
     lastLatency: 0,
     micBlocked: !demoSpeechClass(),
+    handoffReason: '',
   });
 
   const mute = document.getElementById('call-mute');
@@ -1353,6 +1357,13 @@ function endDemoCall(message) {
   const customers = turns.filter((item) => item.role === 'customer');
   const outcome = demoVoice.outcome ||
     (customers.length ? 'info_only' : 'abandoned');
+  const lastCustomer = customers.length
+    ? String(customers[customers.length - 1].text).slice(0, 30)
+    : '';
+  const summary = demoVoice.handoffReason
+    ? `${demoVoice.handoffReason} \u2014 "${lastCustomer}"`
+    : (customers.length ? String(customers[customers.length - 1].text).slice(0, 70)
+      : 'No customer speech was captured.');
 
   saveDemoCall({
     id: `demo-${started}`,
@@ -1363,7 +1374,7 @@ function endDemoCall(message) {
     caller_phone: 'On-device mic',
     transcript: turns.map((item) => `${item.role === 'customer' ? 'Customer' : 'Agent'}: ${item.text}`).join('\n'),
     turns,
-    summary: customers.length ? shortText(customers[customers.length - 1].text, 70) : 'No customer speech was captured.',
+    summary,
     outcome,
     source: 'on-device',
   });
