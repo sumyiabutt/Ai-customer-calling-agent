@@ -413,17 +413,20 @@ const WEEKS = [
     title: 'Live voice agent',
     summary:
       'A browser voice call through Vapi, webhook tools that read the approved ' +
-      'orders and FAQs, and finished calls saved to a hosted database.',
+      'orders and FAQs, and finished calls saved to a hosted database. When the ' +
+      'hosted keys are missing, a key-free on-device demo runs the same intent ' +
+      'and reply rules in the browser.',
     points: [
       'Assistant definition kept in code: five approved tools and a signed webhook',
       'Webhook with secret verification for order status, FAQ, hours, handoff and outcome',
       'Browser call dock with live transcript, mute and end call',
       'Dashboard wired to live calls from the database, with a Vapi API fallback, labelled apart from sample data',
       'Card and CNIC patterns masked before saving; no audio is stored',
+      'Key-free on-device demo: spoken or typed turns, spoken replies, barge-in and a call log saved on the device',
       '23 offline API checks, plus a hosted setup page that creates the assistant from this code',
     ],
-    evidence: '23 API checks',
-    pending: 'Project-assistant test call: the Vapi public and private keys and the Supabase service key still need valid values in Vercel.',
+    evidence: '23 API checks + live browser demo',
+    pending: 'Vapi-hosted assistant test call: the Vapi public, private and Supabase service keys still need valid values in Vercel. The browser demo runs today without keys.',
     link: { label: 'Live calls in the dashboard', href: '#/dashboard' },
   },
 ];
@@ -1821,8 +1824,9 @@ function journeyView() {
         <p class="page-sub">What each build stage delivered, how it was tested and
           what still needs external access. Stages 1 to 3 run on the local
           prototype. Stage 4 is deployed through Vapi: the API functions, the hosted
-          tables and a setup page that builds the assistant are live, while the
-          project assistant waits on valid key values in the hosting project.</p>
+          tables and a setup page that builds the assistant are live, and a key-free
+          browser voice demo runs today, while the project assistant waits on valid
+          key values in the hosting project.</p>
       </div>
     </div>
 
@@ -1838,8 +1842,9 @@ function journeyView() {
     <div class="grid-2" style="margin-top:18px">
       <section class="panel" aria-labelledby="access-title">
         <h2 id="access-title">Access required for a live call</h2>
-        <p class="panel-note">The key values are the remaining block. The schema,
-          API functions and setup page are already in place.</p>
+        <p class="panel-note">The key values are the remaining block for the Vapi
+          call. The schema, API functions and setup page are already in place, and the
+          browser demo runs without any keys.</p>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Access</th><th>Purpose</th></tr></thead>
@@ -1853,8 +1858,10 @@ function journeyView() {
         <p class="panel-note" style="margin:0">
           No phone line is connected. The API functions, the hosted tables and the setup
           page are deployed; the project assistant still needs valid key values in Vercel
-          before a call can run on this page and be saved to the call log. A key-free link
-          to Vapi's own sample assistant is available, and those calls are not saved here.
+          before a Vapi call can run on this page and be saved to the hosted call log.
+          Until then, the browser demo runs without keys in the call dock, and its calls
+          are labelled on-device. A key-free link to Vapi's own sample assistant is also
+          available, and those calls are not saved here.
         </p>
       </section>
     </div>`;
