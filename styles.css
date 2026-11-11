@@ -1433,6 +1433,37 @@ td a:hover { text-decoration: underline; }
   text-decoration: underline;
 }
 
+.dock-type {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.dock-type[hidden] { display: none; }
+
+.dock-type input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+.dock-type input:focus {
+  outline: 2px solid var(--navy);
+  outline-offset: 1px;
+}
+
+.dock-type .btn {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
 .dock-transcript {
   max-height: 170px;
   overflow-y: auto;

@@ -803,12 +803,23 @@ function ensureDock() {
     </div>
     <p class="dock-note" id="call-note">Allow microphone access when the browser asks.</p>
     <div class="dock-transcript" id="call-transcript"></div>
+    <form class="dock-type" id="call-type-form" hidden>
+      <input id="call-type-input" type="text" placeholder="Type a message" autocomplete="off" maxlength="200">
+      <button class="btn btn-ghost" type="submit">Send</button>
+    </form>
     <div class="dock-actions">
       <button class="btn btn-primary" id="call-mute" type="button" aria-pressed="false" hidden>Mute</button>
       <button class="btn btn-ghost" id="call-end" type="button" hidden>End call</button>
       <button class="btn btn-ghost" id="call-close" type="button">Close</button>
     </div>`;
   document.body.appendChild(node);
+  const form = node.querySelector('#call-type-form');
+  if (form) {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      demoTypeTurn();
+    });
+  }
   return node;
 }
 
@@ -831,24 +842,14 @@ function setCallControls(active) {
   if (end) end.hidden = !active;
 }
 
-function clearDockDemoLink() {
-  ['call-demo-link', 'call-setup-link', 'call-browser-demo'].forEach((id) => {
-    const link = document.getElementById(id);
-    if (link) link.remove();
-  });
+function setDemoTypeVisible(visible) {
+  const form = document.getElementById('call-type-form');
+  if (form) form.hidden = !visible;
 }
 
-function showDockDemoLink() {
-  const note = document.getElementById('call-note');
-  if (!note || document.getElementById('call-demo-link')) return;
-  const link = document.createElement('a');
-  link.id = 'call-demo-link';
-  link.className = 'dock-demo';
-  link.href = VOICE_DEMO_URL;
-  link.target = '_blank';
-  link.rel = 'noopener';
-  link.textContent = 'Open the Vapi sample call (not Sumyia) \u2192';
-  note.insertAdjacentElement('afterend', link);
+function clearDockDemoLink() {
+  const link = document.getElementById('call-setup-link');
+  if (link) link.remove();
 }
 
 function showDockSetupLink() {
@@ -892,7 +893,7 @@ function stopDockTimer() {
 }
 
 async function startLiveCall() {
-  if (dock.busy) return;
+  if (dock.busy || demoVoice.active) return;
   dock.busy = true;
 
   const node = ensureDock();
@@ -900,6 +901,7 @@ async function startLiveCall() {
   const transcript = document.getElementById('call-transcript');
   if (transcript) transcript.innerHTML = '';
   setCallControls(false);
+  setDemoTypeVisible(false);
   clearDockDemoLink();
   setDockNote('Checking the live voice setup\u2026');
   setDockStatus('Checking', 'warn');
@@ -907,31 +909,8 @@ async function startLiveCall() {
   try {
     const config = await fetchJson(`${VOICE_API}/config`);
     if (!config.configured) {
-      const issue = config.keyIssue || '';
-      if (issue === 'masked' || issue === 'placeholder') {
-        setDockStatus('Key needs replacing', 'warn');
-        setDockNote(
-          `The public key saved in hosting is ${issue === 'masked' ? 'masked bullet characters' : 'placeholder text'}, ` +
-          'not a usable Vapi key. Replace the VAPI_PUBLIC_KEY value with the key copied ' +
-          'from Vapi, then redeploy. The setup page lists what else is still missing.'
-        );
-      } else if (issue === 'empty') {
-        setDockStatus('Setup needed', 'warn');
-        setDockNote(
-          'No Vapi public key is saved in the hosting project yet. Add VAPI_PUBLIC_KEY, ' +
-          'redeploy, then open the setup page. Nothing was recorded and the dashboard ' +
-          'still shows sample data.'
-        );
-      } else {
-        setDockStatus('Assistant missing', 'warn');
-        setDockNote(
-          'The public key is in place, but no assistant matches this project, so a call ' +
-          'cannot start. Open the setup page and create the assistant.'
-        );
-      }
-      showDockDemoLink();
+      startDemoCall();
       showDockSetupLink();
-      showDockBrowserDemo();
       return;
     }
 
@@ -1044,14 +1023,11 @@ const demoVoice = {
   outcome: 'info_only',
   pendingAt: 0,
   lastLatency: 0,
+  micBlocked: false,
 };
 
 function demoSpeechClass() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
-}
-
-function browserVoiceSupported() {
-  return Boolean(demoSpeechClass() && window.speechSynthesis);
 }
 
 function readDemoCalls() {
@@ -1134,13 +1110,16 @@ function demoSpeak(text, done) {
   utterance.onend = () => {
     demoVoice.speaking = false;
     if (done) done();
-    else if (demoVoice.active && !demoVoice.muted) demoListen();
+    else if (demoVoice.active && !demoVoice.muted && !demoVoice.micBlocked) demoListen();
+    else if (demoVoice.active && demoVoice.micBlocked) {
+      setDockNote('Type your next message below \u2014 the agent answers aloud and in the transcript.');
+    }
   };
   window.speechSynthesis.speak(utterance);
 }
 
 function demoListen() {
-  if (!demoVoice.active || demoVoice.muted || demoVoice.listening) return;
+  if (!demoVoice.active || demoVoice.muted || demoVoice.listening || demoVoice.micBlocked) return;
   const Speech = demoSpeechClass();
   if (!Speech) return;
 
@@ -1171,15 +1150,19 @@ function demoListen() {
   };
   recognition.onerror = (event) => {
     demoVoice.listening = false;
-    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-      endDemoCall('Microphone access was blocked. Allow the microphone for this site, then start again.');
+    if (event.error === 'not-allowed' || event.error === 'service-not-allowed' || event.error === 'network') {
+      demoVoice.micBlocked = true;
+      setDockNote(
+        'Voice input is not available in this browser. Type your message below \u2014 ' +
+        'the agent still answers aloud and in the transcript.'
+      );
     } else if (event.error === 'no-speech' && demoVoice.active) {
       setDockNote('I did not hear anything. Try again, or press End call.');
     }
   };
   recognition.onend = () => {
     demoVoice.listening = false;
-    if (demoVoice.active && !demoVoice.speaking && !demoVoice.muted) {
+    if (demoVoice.active && !demoVoice.speaking && !demoVoice.muted && !demoVoice.micBlocked) {
       window.setTimeout(() => demoListen(), 600);
     }
   };
@@ -1214,17 +1197,33 @@ function demoHandleTurn(said) {
   demoSpeak(reply, finished ? () => endDemoCall() : null);
 }
 
-function startDemoCall() {
+function demoTypeTurn() {
+  const input = document.getElementById('call-type-input');
+  if (!input || !demoVoice.active) return;
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  if (demoVoice.recognition) {
+    try { demoVoice.recognition.stop(); } catch { /* already stopped */ }
+  }
+  demoVoice.listening = false;
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  demoVoice.speaking = false;
+  demoHandleTurn(text);
+}
+
+async function startDemoCall() {
   if (demoVoice.active) return;
   const node = ensureDock();
   node.hidden = false;
   clearDockDemoLink();
   if (dock.vapi) stopLiveCall();
 
-  if (!browserVoiceSupported()) {
+  if (!window.speechSynthesis) {
     setDockStatus('Browser limit', 'warn');
-    setDockNote('This browser has no on-device speech engine. Use Chrome or Edge for the demo; the Vapi assistant needs hosting keys.');
+    setDockNote('This browser cannot speak text on the device. Use Chrome or Edge for the demo.');
     setCallControls(false);
+    setDemoTypeVisible(false);
     return;
   }
 
@@ -1243,6 +1242,7 @@ function startDemoCall() {
     outcome: 'info_only',
     pendingAt: 0,
     lastLatency: 0,
+    micBlocked: !demoSpeechClass(),
   });
 
   const mute = document.getElementById('call-mute');
@@ -1251,8 +1251,13 @@ function startDemoCall() {
     mute.setAttribute('aria-pressed', 'false');
   }
   setCallControls(true);
+  setDemoTypeVisible(true);
   setDockStatus('Demo \u00b7 0:00', 'live');
-  setDockNote('On-device demo: your browser listens and speaks. Nothing is uploaded and no audio is stored.');
+  setDockNote(
+    demoVoice.micBlocked
+      ? 'This browser has no speech input. Type your message below and the agent answers aloud.'
+      : 'Allow microphone access when the browser asks. You can also type below.'
+  );
 
   stopDockTimer();
   demoVoice.timer = window.setInterval(() => {
@@ -1261,6 +1266,19 @@ function startDemoCall() {
     const latency = demoVoice.lastLatency ? ` \u00b7 reply ${demoVoice.lastLatency} ms` : '';
     setDockStatus(`Demo \u00b7 ${formatDuration(seconds)}${latency}`, 'live');
   }, 1000);
+
+  if (!demoVoice.micBlocked && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
+    } catch {
+      demoVoice.micBlocked = true;
+      if (demoVoice.active) {
+        setDockNote('Microphone is blocked. Type your message below and the agent answers aloud.');
+      }
+    }
+  }
+  if (!demoVoice.active) return;
 
   const greeting =
     'Hello! This is the browser voice demo. I can check a sample order from ' +
@@ -1284,6 +1302,7 @@ function endDemoCall(message) {
   demoVoice.timer = null;
   demoVoice.speaking = false;
   setCallControls(false);
+  setDemoTypeVisible(false);
 
   const started = demoVoice.startedAt || Date.now();
   const ended = Date.now();
@@ -1326,25 +1345,15 @@ function toggleDemoMute() {
     demoVoice.speaking = false;
     setDockNote('Microphone muted. Press Unmute to continue.');
   } else {
-    setDockNote('Listening\u2026 speak now.');
+    setDockNote(demoVoice.micBlocked
+      ? 'Type your message below and the agent answers aloud.'
+      : 'Listening\u2026 speak now.');
     demoListen();
   }
   if (button) {
     button.setAttribute('aria-pressed', String(demoVoice.muted));
     button.textContent = demoVoice.muted ? 'Unmute' : 'Mute';
   }
-}
-
-function showDockBrowserDemo() {
-  const note = document.getElementById('call-note');
-  if (!note || document.getElementById('call-browser-demo')) return;
-  const button = document.createElement('button');
-  button.id = 'call-browser-demo';
-  button.className = 'dock-demo dock-demo-button';
-  button.type = 'button';
-  button.textContent = 'Start the browser voice demo (no keys)';
-  button.addEventListener('click', () => startDemoCall());
-  note.insertAdjacentElement('afterend', button);
 }
 
 /* ---------- Home ---------- */
@@ -1444,14 +1453,16 @@ function homeView() {
       <div>
         <p class="section-kicker">Live voice agent</p>
         <h2>Talk to Sumyia in the browser</h2>
-        <p>Press the button, allow the microphone and speak in English.
-          When the hosted keys are present the call runs inside this page and the
-          finished call is saved to the dashboard with its transcript and outcome.</p>
+        <p>Press the button: if the hosted Vapi keys are present the call runs on Vapi,
+          otherwise the same page starts the on-device browser demo. Allow the
+          microphone to speak in English, or type in the dock if the microphone is
+          blocked. Every finished call is saved to the dashboard with its transcript
+          and outcome.</p>
         <p class="live-band-note">Browser calls only: no phone number is connected.
           Urdu and mixed-language speech are the next step. Audio is never stored.
-          The browser voice demo runs on this device with its own speech engine and
-          needs no keys. The last button opens Vapi's own sample assistant, not
-          Sumyia, and its calls are not saved to this dashboard.</p>
+          The browser demo uses the browser's own speech engine and needs no keys.
+          The last button opens Vapi's own sample assistant, not Sumyia, and its
+          calls are not saved to this dashboard.</p>
       </div>
       <div class="live-band-actions">
         <button class="btn btn-live" type="button" data-action="talk">Talk to the agent</button>
@@ -2430,10 +2441,6 @@ document.addEventListener('click', (event) => {
     return;
   }
   if (event.target.closest('[data-action="demo-talk"]')) {
-    startDemoCall();
-    return;
-  }
-  if (event.target.closest('#call-browser-demo')) {
     startDemoCall();
     return;
   }
