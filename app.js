@@ -916,6 +916,8 @@ async function startLiveCall() {
 
     setDockStatus('Connecting\u2026', 'warn');
     setDockNote('Allow microphone access when the browser asks.');
+    const title = document.querySelector('#call-dock .dock-title');
+    if (title) title.textContent = 'Sumyia \u00b7 ShopEasy';
 
     const module = await import('https://esm.sh/@vapi-ai/web@2');
     const Vapi = module.default || module.Vapi;
@@ -1326,7 +1328,7 @@ function endDemoCall(message) {
   });
 
   const title = document.querySelector('#call-dock .dock-title');
-  if (title) title.textContent = 'Sumyia \u00b7 ShopEasy';
+  if (title) title.textContent = 'Browser voice demo';
   setDockStatus('Demo ended', '');
   setDockNote(message ||
     'Saved on this device only. The dashboard lists it under Live calls, labelled on-device.');
