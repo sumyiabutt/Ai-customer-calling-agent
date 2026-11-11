@@ -365,7 +365,7 @@ const WEEKS = [
       'Eight intents, including invalid order numbers and empty input',
       'Order lookup for ORD-1001 to ORD-1005',
       'Fallback reply and human handoff path',
-      '27 unit tests and the Stage 1 report',
+      '27 unit tests',
     ],
     evidence: '27 automated tests',
     pending: 'First live test call: no telephony account, number or credentials.',
@@ -383,7 +383,7 @@ const WEEKS = [
       'Per-call session with three-strike escalation and handoff summary (12 tests)',
       'Voice pipeline with pluggable speech-to-text and text-to-speech (12 tests)',
       'Windows SAPI speech output with a printed fallback',
-      '65 tests in total and the Stage 2 report',
+      '65 tests in total',
     ],
     evidence: '65 automated tests',
     pending: 'Streaming speech recognition and a live telephony test call.',
@@ -401,7 +401,7 @@ const WEEKS = [
       'Call log with transcript, outcome and caller link (10 tests)',
       'Dashboard login, filters and transcript pages (19 tests)',
       '19 live HTTP checks against the local server',
-      '104 tests in total and the Stage 3 report',
+      '104 tests in total',
     ],
     evidence: '104 automated tests',
     pending: 'Real client CRM API, call recordings and production authentication.',
@@ -1909,7 +1909,6 @@ function howItWorksView() {
     ['Hosted data', 'Supabase Postgres: orders, faqs, live_calls, handoffs and settings'],
     ['Sample data', 'SQLite CRM and call log behind the Python prototype and the sample records'],
     ['This site', 'Plain HTML, CSS and JavaScript with hash routing, no build step'],
-    ['Reports', 'python-docx generator scripts with a shared black and navy theme'],
   ].map(([layer, tech]) => `<tr><td>${escapeHtml(layer)}</td><td>${escapeHtml(tech)}</td></tr>`).join('');
 
   return `
@@ -2036,17 +2035,6 @@ function testingView() {
       <td class="num">${count}</td>
     </tr>`).join('');
 
-  const downloads = [
-    ['Stage 1', 'WEEK1_DEVELOPMENT_DOCUMENT.docx', 'Discovery, intents, prototype'],
-    ['Stage 2', 'WEEK2_DEVELOPMENT_DOCUMENT.docx', 'Knowledge base, session, voice loop'],
-    ['Stage 3', 'WEEK3_DEVELOPMENT_DOCUMENT.docx', 'CRM, call log, dashboard'],
-  ].map(([stage, file, meta]) => `
-    <a class="download" href="${file}" download>
-      <span class="file-tag">DOCX</span>
-      <strong>${escapeHtml(stage)} report</strong>
-      <span class="download-meta">${escapeHtml(meta)}</span>
-    </a>`).join('');
-
   return `
     <div class="page-head">
       <div>
@@ -2117,16 +2105,6 @@ python -m src.dashboard</pre>
           </ul>
         </div>
       </div>
-    </section>
-
-    <section class="section">
-      <div class="section-head">
-        <p class="section-kicker">Reports</p>
-        <h2>Development reports</h2>
-        <p>Each report covers that stage's scope, implementation, tests and the
-          access that is still pending.</p>
-      </div>
-      <div class="downloads">${downloads}</div>
     </section>
 
     <section class="callout" style="margin-top:22px">
