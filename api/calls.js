@@ -159,7 +159,7 @@ module.exports = async function handler(req, res) {
     return json(res, 405, { error: 'Method not allowed' });
   }
 
-  if (!requireAdmin(req, res)) return;
+  if (!(await requireAdmin(req, res))) return;
 
   const id = (req.query && req.query.id) || '';
   try {

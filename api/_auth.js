@@ -1,12 +1,13 @@
 'use strict';
 
 const crypto = require('crypto');
-const { json } = require('./_lib');
+const { json, sb } = require('./_lib');
 
 const COOKIE = 'shopeasy_admin';
 const MAX_AGE_SECONDS = 8 * 60 * 60;
+const STORED_CACHE_MS = 30 * 1000;
 
-function adminConfig() {
+function envAdminConfig() {
   const single = String(process.env.ADMIN_LOGIN || '');
   let email = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
   let password = String(process.env.ADMIN_PASSWORD || '');
@@ -24,7 +25,52 @@ function adminConfig() {
     missing.push('ADMIN_LOGIN (email:password) or ADMIN_EMAIL + ADMIN_PASSWORD');
   } else if (password.length < 8) missing.push('ADMIN_PASSWORD (at least 8 characters)');
   if (!secret) missing.push('ADMIN_SESSION_SECRET');
-  return { email, password, secret, missing, ready: missing.length === 0 };
+  return { email, password, secret, missing, ready: missing.length === 0, source: 'environment' };
+}
+
+let storedCache = { at: 0, value: null };
+
+async function storedAdmin() {
+  if (Date.now() - storedCache.at < STORED_CACHE_MS) return storedCache.value;
+  let value = null;
+  try {
+    const rows = await sb(
+      'settings?key=in.(admin_email,admin_password_hash,admin_session_secret)&select=key,value'
+    );
+    const map = {};
+    for (const row of rows || []) map[row.key] = row.value;
+    if (map.admin_email && map.admin_password_hash && map.admin_session_secret) {
+      value = {
+        email: String(map.admin_email).trim().toLowerCase(),
+        passwordHash: map.admin_password_hash,
+        secret: map.admin_session_secret,
+      };
+    }
+  } catch {
+    value = null;
+  }
+  storedCache = { at: Date.now(), value };
+  return value;
+}
+
+function clearStoredCache() {
+  storedCache = { at: 0, value: null };
+}
+
+async function loadAdminConfig() {
+  const env = envAdminConfig();
+  if (env.ready) return env;
+  const stored = await storedAdmin();
+  if (!stored) return { ...env, ready: false, missing: env.missing };
+  return {
+    email: stored.email,
+    password: '',
+    passwordHash: stored.passwordHash,
+    secret: stored.secret,
+    missing: [],
+    ready: true,
+    source: 'database',
+  };
 }
 
 function digest(value) {
@@ -33,6 +79,29 @@ function digest(value) {
 
 function sameText(left, right) {
   return crypto.timingSafeEqual(digest(left), digest(right));
+}
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(String(password), salt, 32).toString('hex');
+  return `scrypt$${salt}$${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  const parts = String(stored || '').split('$');
+  if (parts.length !== 3 || parts[0] !== 'scrypt') return false;
+  const actual = crypto.scryptSync(String(password), parts[1], 32);
+  const expected = Buffer.from(parts[2], 'hex');
+  return expected.length === actual.length && crypto.timingSafeEqual(actual, expected);
+}
+
+function passwordMatches(config, password) {
+  if (config.passwordHash) return verifyPassword(password, config.passwordHash);
+  return sameText(password, config.password);
+}
+
+function newSessionSecret() {
+  return crypto.randomBytes(32).toString('hex');
 }
 
 function sign(value, secret) {
@@ -76,8 +145,7 @@ function readCookie(req, name) {
   return '';
 }
 
-function sessionFrom(req) {
-  const config = adminConfig();
+function sessionFrom(req, config = envAdminConfig()) {
   if (!config.ready) return { authenticated: false, email: '', configured: false };
   const data = verifyToken(readCookie(req, COOKIE), config.secret);
   if (!data) return { authenticated: false, email: '', configured: true };
@@ -105,8 +173,8 @@ function clearSessionCookie(req, res) {
   res.setHeader('Set-Cookie', `${COOKIE}=; ${cookieBase(req)}Max-Age=0`);
 }
 
-function requireAdmin(req, res) {
-  const config = adminConfig();
+async function requireAdmin(req, res) {
+  const config = await loadAdminConfig();
   if (!config.ready) {
     json(res, 503, {
       error: 'Admin login is not configured on this deployment.',
@@ -114,7 +182,7 @@ function requireAdmin(req, res) {
     });
     return null;
   }
-  const session = sessionFrom(req);
+  const session = sessionFrom(req, config);
   if (!session.authenticated) {
     json(res, 401, { error: 'Sign in to the admin area to read call data.' });
     return null;
@@ -134,8 +202,14 @@ function sameOrigin(req) {
 }
 
 module.exports = {
-  adminConfig,
+  envAdminConfig,
+  loadAdminConfig,
+  clearStoredCache,
   sameText,
+  hashPassword,
+  verifyPassword,
+  passwordMatches,
+  newSessionSecret,
   issueToken,
   verifyToken,
   sessionFrom,
