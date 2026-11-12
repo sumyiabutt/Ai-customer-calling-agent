@@ -30,7 +30,9 @@ module.exports = async function handler(req, res) {
   if (supplied !== expected) {
     return json(res, 401, {
       error:
-        'That setup token does not match SETUP_TOKEN on this deployment. Check the saved value (no extra spaces) and redeploy after changing it.',
+        'That setup token does not match SETUP_TOKEN on this deployment. Check the saved value and redeploy after changing it.',
+      expectedLength: expected.length,
+      suppliedLength: supplied.length,
     });
   }
 
