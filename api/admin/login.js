@@ -2,8 +2,9 @@
 
 const { json, body } = require('../_lib');
 const {
-  adminConfig,
+  loadAdminConfig,
   sameText,
+  passwordMatches,
   issueToken,
   setSessionCookie,
   sameOrigin,
@@ -42,7 +43,7 @@ module.exports = async function handler(req, res) {
     return json(res, 403, { error: 'Request origin is not allowed.' });
   }
 
-  const config = adminConfig();
+  const config = await loadAdminConfig();
   if (!config.ready) {
     return json(res, 503, {
       error: 'Admin login is not configured on this deployment yet.',
@@ -63,7 +64,7 @@ module.exports = async function handler(req, res) {
     return json(res, 400, { error: 'Enter the admin email and password.' });
   }
 
-  if (!sameText(email, config.email) || !sameText(password, config.password)) {
+  if (!sameText(email, config.email) || !passwordMatches(config, password)) {
     return json(res, 401, { error: 'Email or password is incorrect.' });
   }
 
