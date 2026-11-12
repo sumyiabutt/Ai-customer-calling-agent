@@ -5,7 +5,7 @@
  * Live calls come from the Vapi browser agent through the /api functions and
  * are labelled separately. No call audio is stored.
  *
- * Build: 2026-11-12 17:12 UTC.
+ * Build: 2026-11-12 17:23 UTC.
  */
 
 'use strict';
@@ -628,7 +628,9 @@ async function fetchJson(path, options) {
     data = {};
   }
   if (!response.ok) {
-    throw new Error(data.error || `Request failed (${response.status})`);
+    const error = new Error(data.error || `Request failed (${response.status})`);
+    error.data = data;
+    throw error;
   }
   return data;
 }
@@ -814,7 +816,11 @@ async function submitAdminCreate(event) {
     const passwordInput = document.getElementById('admin-password');
     if (passwordInput) passwordInput.focus();
   } catch (error) {
-    fail(error.message);
+    const data = error.data || {};
+    const hint = typeof data.expectedLength === 'number'
+      ? ` The saved token has ${data.expectedLength} characters; this one had ${data.suppliedLength}.`
+      : '';
+    fail(`${error.message}${hint}`);
   }
 }
 
