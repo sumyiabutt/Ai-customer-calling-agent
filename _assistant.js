@@ -116,9 +116,29 @@ const TOOLS = [
   },
 ];
 
+const ASSISTANT_NAME = 'Sumyia — ShopEasy';
+
+async function findAssistantId() {
+  const key = process.env.VAPI_PRIVATE_KEY || '';
+  if (!key) return '';
+  try {
+    const response = await fetch('https://api.vapi.ai/assistant?limit=100', {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    if (!response.ok) return '';
+    const rows = await response.json();
+    const match = (Array.isArray(rows) ? rows : []).find(
+      (row) => row && row.name === ASSISTANT_NAME
+    );
+    return (match && match.id) || '';
+  } catch {
+    return '';
+  }
+}
+
 function assistantConfig(serverUrl, secret) {
   return {
-    name: 'Sumyia — ShopEasy',
+    name: ASSISTANT_NAME,
     firstMessage: FIRST_MESSAGE,
     model: {
       provider: 'openai',
@@ -129,6 +149,19 @@ function assistantConfig(serverUrl, secret) {
     },
     voice: { provider: 'vapi', voiceId: 'Elliot' },
     transcriber: { provider: 'deepgram', model: 'nova-3', language: 'en' },
+    // Interruption: any recognised word from the caller stops the current reply,
+    // and the barge-in window closes quickly so the next sentence is not blocked.
+    stopSpeakingPlan: {
+      numWords: 0,
+      voiceSeconds: 0.2,
+      backoffSeconds: 0.4,
+    },
+    // Start replying after a short pause; smart endpointing decides when the caller
+    // has finished a thought instead of a fixed long wait.
+    startSpeakingPlan: {
+      waitSeconds: 0.4,
+      smartEndpointingPlan: { provider: 'vapi' },
+    },
     serverUrl,
     serverUrlSecret: secret,
     recordingEnabled: false,
@@ -137,4 +170,4 @@ function assistantConfig(serverUrl, secret) {
   };
 }
 
-module.exports = { assistantConfig, FIRST_MESSAGE, SYSTEM_PROMPT, TOOLS };
+module.exports = { assistantConfig, findAssistantId, FIRST_MESSAGE, SYSTEM_PROMPT, TOOLS };
