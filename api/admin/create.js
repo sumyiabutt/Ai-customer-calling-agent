@@ -19,10 +19,19 @@ module.exports = async function handler(req, res) {
     return json(res, 403, { error: 'Request origin is not allowed.' });
   }
 
-  const expected = process.env.SETUP_TOKEN || '';
-  const supplied = req.headers['x-setup-token'] || '';
-  if (!expected || supplied !== expected) {
-    return json(res, 401, { error: 'Invalid setup token' });
+  const expected = (process.env.SETUP_TOKEN || '').trim();
+  if (!expected) {
+    return json(res, 503, {
+      error:
+        'SETUP_TOKEN is not set on this deployment yet. Save it in the hosting environment variables, then redeploy.',
+    });
+  }
+  const supplied = String(req.headers['x-setup-token'] || '').trim();
+  if (supplied !== expected) {
+    return json(res, 401, {
+      error:
+        'That setup token does not match SETUP_TOKEN on this deployment. Check the saved value (no extra spaces) and redeploy after changing it.',
+    });
   }
 
   const config = await loadAdminConfig();
