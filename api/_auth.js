@@ -7,14 +7,23 @@ const COOKIE = 'shopeasy_admin';
 const MAX_AGE_SECONDS = 8 * 60 * 60;
 
 function adminConfig() {
-  const email = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-  const password = String(process.env.ADMIN_PASSWORD || '');
-  const secret = String(process.env.ADMIN_SESSION_SECRET || '');
+  const single = String(process.env.ADMIN_LOGIN || '');
+  let email = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  let password = String(process.env.ADMIN_PASSWORD || '');
+  const split = single.indexOf(':');
+  if (split > 0 && (!email || !password)) {
+    email = email || single.slice(0, split).trim().toLowerCase();
+    password = password || single.slice(split + 1);
+  }
+  let secret = String(process.env.ADMIN_SESSION_SECRET || '');
+  if (!secret && email && password.length >= 8) {
+    secret = digest(`shopeasy-admin-session|${email}|${password}`).toString('hex');
+  }
   const missing = [];
-  if (!email) missing.push('ADMIN_EMAIL');
-  if (!password) missing.push('ADMIN_PASSWORD');
+  if (!email || !password) {
+    missing.push('ADMIN_LOGIN (email:password) or ADMIN_EMAIL + ADMIN_PASSWORD');
+  } else if (password.length < 8) missing.push('ADMIN_PASSWORD (at least 8 characters)');
   if (!secret) missing.push('ADMIN_SESSION_SECRET');
-  else if (secret.length < 16) missing.push('ADMIN_SESSION_SECRET (must be at least 16 characters)');
   return { email, password, secret, missing, ready: missing.length === 0 };
 }
 
