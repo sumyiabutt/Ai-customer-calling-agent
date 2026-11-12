@@ -5,7 +5,7 @@
  * Live calls come from the Vapi browser agent through the /api functions and
  * are labelled separately. No call audio is stored.
  *
- * Build: 2026-11-12 16:33 UTC.
+ * Build: 2026-11-12 16:41 UTC.
  */
 
 'use strict';
@@ -666,9 +666,34 @@ function applyNavAuth() {
 function adminLoginView(message) {
   const missing = ADMIN.configured
     ? ''
-    : `<p class="login-error">Admin login is not configured on this deployment yet. Add
-        ${escapeHtml((ADMIN.missing.length ? ADMIN.missing : ['ADMIN_EMAIL', 'ADMIN_PASSWORD', 'ADMIN_SESSION_SECRET']).join(', '))}
-        to the hosting environment variables, then redeploy.</p>`;
+    : `<p class="login-error">No admin login has been created on this deployment yet. Set it up
+        below with your setup token, or add
+        ${escapeHtml((ADMIN.missing.length ? ADMIN.missing : ['ADMIN_LOGIN']).join(', '))}
+        to the hosting environment variables and redeploy.</p>`;
+  let setupToken = '';
+  try { setupToken = sessionStorage.getItem(SETUP_TOKEN_KEY) || ''; } catch { /* storage can be disabled */ }
+  const createForm = ADMIN.configured ? '' : `
+      <form id="admin-create-form" class="login-form">
+        <p class="admin-note">Create the one team account. The password is stored as a hash in the
+          call database, never in this page or in the repository.</p>
+        <label for="admin-create-email">Admin email
+          <input id="admin-create-email" name="email" type="email" autocomplete="username" required>
+        </label>
+        <label for="admin-create-password">Password (at least 8 characters)
+          <input id="admin-create-password" name="password" type="new-password" autocomplete="new-password" minlength="8" required>
+        </label>
+        <label for="admin-create-confirm">Repeat password
+          <input id="admin-create-confirm" name="confirm" type="new-password" autocomplete="new-password" minlength="8" required>
+        </label>
+        <label for="admin-create-token">Setup token
+          <input id="admin-create-token" name="token" type="password" autocomplete="off" value="${escapeHtml(setupToken)}" required>
+        </label>
+        <div class="setup-actions">
+          <button class="btn btn-primary" type="submit">Save admin login</button>
+          <a class="btn btn-ghost" href="#/">Back to home</a>
+        </div>
+        <p id="admin-create-error" class="login-error" role="alert"></p>
+      </form>`;
   return `
     <div class="page-head">
       <div>
@@ -681,6 +706,7 @@ function adminLoginView(message) {
       <h2 id="admin-login-title">Team sign-in</h2>
       ${missing}
       ${ADMIN.error ? `<p class="login-error">${escapeHtml(ADMIN.error)}</p>` : ''}
+      ${createForm}
       <form id="admin-login-form" class="login-form" ${ADMIN.configured ? '' : 'hidden'}>
         <label for="admin-email">Email
           <input id="admin-email" name="email" type="email" autocomplete="username" required>
@@ -743,8 +769,56 @@ async function submitAdminLogin(event) {
   }
 }
 
-async function adminLogout() {
+async function submitAdminCreate(event) {
+  event.preventDefault();
+  const errorBox = document.getElementById('admin-create-error');
+  const button = document.querySelector('#admin-create-form button[type="submit"]');
+  const email = (document.getElementById('admin-create-email') || {}).value || '';
+  const password = (document.getElementById('admin-create-password') || {}).value || '';
+  const confirm = (document.getElementById('admin-create-confirm') || {}).value || '';
+  const token = (document.getElementById('admin-create-token') || {}).value || '';
+
+  const fail = (text) => {
+    if (errorBox) errorBox.textContent = text;
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Save admin login';
+    }
+  };
+
+  if (!email.trim() || !password || !token.trim()) return fail('Fill in every field.');
+  if (password.length < 8) return fail('Use a password with at least 8 characters.');
+  if (password !== confirm) return fail('The two passwords do not match.');
+
+  if (errorBox) errorBox.textContent = '';
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Saving\u2026';
+  }
   try {
+    await fetchJson(`${VOICE_API}/admin/create`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'x-setup-token': token.trim() },
+      body: JSON.stringify({ email: email.trim(), password }),
+    });
+    try { sessionStorage.setItem(SETUP_TOKEN_KEY, token.trim()); } catch { /* storage can be disabled */ }
+    ADMIN.configured = true;
+    ADMIN.missing = [];
+    ADMIN.error = '';
+    route();
+    const box = document.getElementById('admin-login-error');
+    if (box) box.textContent = 'Admin login saved. Sign in with the email and password you just set.';
+    const emailInput = document.getElementById('admin-email');
+    if (emailInput) emailInput.value = email.trim();
+    const passwordInput = document.getElementById('admin-password');
+    if (passwordInput) passwordInput.focus();
+  } catch (error) {
+    fail(error.message);
+  }
+}
+
+async function adminLogout() {  try {
     await fetchJson(`${VOICE_API}/admin/logout`, {
       method: 'POST',
       credentials: 'same-origin',
@@ -2672,8 +2746,11 @@ main.addEventListener('click', (event) => {
 });
 
 document.addEventListener('submit', (event) => {
-  if (event.target instanceof HTMLFormElement && event.target.id === 'admin-login-form') {
+  if (!(event.target instanceof HTMLFormElement)) return;
+  if (event.target.id === 'admin-login-form') {
     submitAdminLogin(event);
+  } else if (event.target.id === 'admin-create-form') {
+    submitAdminCreate(event);
   }
 });
 
