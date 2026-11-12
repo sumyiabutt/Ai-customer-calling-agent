@@ -5,7 +5,7 @@
  * Live calls come from the Vapi browser agent through the /api functions and
  * are labelled separately. No call audio is stored.
  *
- * Build: 2026-11-12 15:54 UTC.
+ * Build: 2026-11-12 16:18 UTC.
  */
 
 'use strict';
@@ -1647,7 +1647,7 @@ function homeView() {
       <div class="hero-actions">
         <button class="btn btn-live" type="button" data-action="talk">Talk to the agent</button>
         <a class="btn btn-ghost" href="#/dashboard">Open the dashboard</a>
-        <a class="btn btn-ghost" href="#/how-it-works">See how it works</a>
+        <a class="btn btn-ghost" href="#how-it-works">See how it works</a>
       </div>
       <p class="hero-meta">Vapi voice agent &middot; hosted call log &middot; English voice &middot; 104 tests + 23 API checks</p>
     </div>
@@ -1720,14 +1720,7 @@ function homeView() {
     <div class="feature-grid">${featureCards}</div>
   </section>
 
-  <section class="section">
-    <div class="section-head">
-      <p class="section-kicker">How it works</p>
-      <h2>How a call flows</h2>
-      <p>Six stages from the caller's sentence to the saved call record.</p>
-    </div>
-    <div class="arch-flow">${arch}</div>
-  </section>
+  <div id="how-it-works">${howItWorksSections('How it works')}</div>
 
   <section class="section">
     <div class="section-head">
@@ -1776,7 +1769,7 @@ function homeView() {
     </div>
     <div class="cta-links">
       <a class="btn btn-primary" href="#/dashboard">Dashboard</a>
-      <a class="btn btn-ghost" href="#/how-it-works">How it works</a>
+      <a class="btn btn-ghost" href="#how-it-works">How it works</a>
     </div>
   </section>`;
 }
@@ -2100,7 +2093,7 @@ function journeyView() {
 
 /* ---------- How it works ---------- */
 
-function howItWorksView() {
+function howItWorksSections(firstKicker = 'Pipeline') {
   const steps = [
     ['Reception', 'The caller speaks in the browser. Vapi handles the microphone, speech recognition and the spoken reply.'],
     ['Intent detection', 'Phrase rules classify the turn: greeting, order status, business hours, FAQ, handoff, goodbye, fallback or empty.'],
@@ -2143,19 +2136,12 @@ function howItWorksView() {
   ].map(([layer, tech]) => `<tr><td>${escapeHtml(layer)}</td><td>${escapeHtml(tech)}</td></tr>`).join('');
 
   return `
-    <div class="page-head">
-      <div>
-        <h1>How it works</h1>
-        <p class="page-sub">The pipeline, the eight intents, the escalation rules,
-          the data model and the safety limits of the local build, plus what the
-          hosted version adds.</p>
-      </div>
-    </div>
-
-    <section class="section" style="margin-top:26px">
+    <section class="section">
       <div class="section-head">
-        <p class="section-kicker">Pipeline</p>
+        <p class="section-kicker">${escapeHtml(firstKicker)}</p>
         <h2>From sentence to saved call</h2>
+        <p>The pipeline, the eight intents, the escalation rules, the data model and
+          the safety limits of the local build, plus what the hosted version adds.</p>
       </div>
       <ol class="steps">${steps}</ol>
     </section>
@@ -2630,8 +2616,8 @@ async function route() {
     html = journeyView();
     view = 'journey';
   } else if (hash === '#/how-it-works') {
-    html = howItWorksView();
-    view = 'how';
+    window.location.replace('#how-it-works');
+    return;
   } else if (hash === '#/testing') {
     html = testingView();
     view = 'testing';
@@ -2647,6 +2633,13 @@ async function route() {
   document.title = match || liveMatch ? title : TITLES[view];
   window.scrollTo({ top: 0, behavior: 'auto' });
   main.focus({ preventScroll: true });
+
+  if (window.location.hash === '#how-it-works') {
+    window.setTimeout(() => {
+      const section = document.getElementById('how-it-works');
+      if (section) section.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }, 60);
+  }
 
   if (view === 'setup') {
     const input = document.getElementById('setup-token');
