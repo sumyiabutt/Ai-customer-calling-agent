@@ -1532,3 +1532,68 @@ nav .nav-call:hover { background: #0c5740; }
 }
 
 .dock-demo-button:hover { text-decoration: underline; }
+
+/* ---------- Admin login ---------- */
+
+nav .nav-link {
+  background: none;
+  border: 0;
+  color: #cfdcee;
+  font-family: inherit;
+  font-size: 13.5px;
+  padding: 6px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+nav .nav-link:hover { background: #1a1a1d; color: #fff; }
+
+.admin-login { max-width: 460px; }
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.login-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.login-form input {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font: inherit;
+  font-size: 14px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.login-form input:focus {
+  outline: 2px solid var(--navy);
+  outline-offset: 1px;
+}
+
+.login-form .setup-actions { margin-top: 2px; }
+.login-form .btn { cursor: pointer; font-family: inherit; }
+
+.login-error {
+  margin: 10px 0 0;
+  color: var(--warn);
+  font-size: 13px;
+}
+
+.login-error:empty { display: none; }
+
+.admin-note {
+  margin: 14px 0 0;
+  color: var(--grey);
+  font-size: 12.5px;
+}

@@ -5,7 +5,7 @@
  * Live calls come from the Vapi browser agent through the /api functions and
  * are labelled separately. No call audio is stored.
  *
- * Build: 2026-11-11 19:27 UTC.
+ * Build: 2026-11-12 15:54 UTC.
  */
 
 'use strict';
@@ -605,6 +605,15 @@ let liveCalls = [];
 let liveCallsState = 'idle';
 let liveCallsError = '';
 const dock = { vapi: null, muted: false, timer: null, started: 0, busy: false };
+const ADMIN = {
+  checked: false,
+  ok: false,
+  email: '',
+  configured: true,
+  missing: [],
+  error: '',
+  busy: false,
+};
 
 async function fetchJson(path, options) {
   const response = await fetch(path, {
@@ -622,6 +631,137 @@ async function fetchJson(path, options) {
     throw new Error(data.error || `Request failed (${response.status})`);
   }
   return data;
+}
+
+async function loadAdminSession(force) {
+  if (ADMIN.checked && !force) return ADMIN;
+  try {
+    const data = await fetchJson(`${VOICE_API}/admin/session`, { credentials: 'same-origin' });
+    ADMIN.checked = true;
+    ADMIN.ok = Boolean(data.authenticated);
+    ADMIN.email = data.email || '';
+    ADMIN.configured = data.configured !== false;
+    ADMIN.missing = Array.isArray(data.missing) ? data.missing : [];
+    ADMIN.error = '';
+  } catch (error) {
+    ADMIN.checked = true;
+    ADMIN.ok = false;
+    ADMIN.error = /404|Failed to fetch|NetworkError/i.test(error.message)
+      ? 'The admin API is not available on this copy of the site. Open the deployed site to sign in.'
+      : error.message;
+  }
+  applyNavAuth();
+  return ADMIN;
+}
+
+function applyNavAuth() {
+  document.querySelectorAll('[data-admin-only]').forEach((el) => {
+    el.hidden = !ADMIN.ok;
+  });
+  document.querySelectorAll('[data-guest-only]').forEach((el) => {
+    el.hidden = ADMIN.ok;
+  });
+}
+
+function adminLoginView(message) {
+  const missing = ADMIN.configured
+    ? ''
+    : `<p class="login-error">Admin login is not configured on this deployment yet. Add
+        ${escapeHtml((ADMIN.missing.length ? ADMIN.missing : ['ADMIN_EMAIL', 'ADMIN_PASSWORD', 'ADMIN_SESSION_SECRET']).join(', '))}
+        to the hosting environment variables, then redeploy.</p>`;
+  return `
+    <div class="page-head">
+      <div>
+        <h1>Admin login</h1>
+        <p class="page-sub">The dashboard and call log are for the ShopEasy support team.
+          Sign in with the admin account to read call records.</p>
+      </div>
+    </div>
+    <section class="panel admin-login" aria-labelledby="admin-login-title">
+      <h2 id="admin-login-title">Team sign-in</h2>
+      ${missing}
+      ${ADMIN.error ? `<p class="login-error">${escapeHtml(ADMIN.error)}</p>` : ''}
+      <form id="admin-login-form" class="login-form" ${ADMIN.configured ? '' : 'hidden'}>
+        <label for="admin-email">Email
+          <input id="admin-email" name="email" type="email" autocomplete="username" required>
+        </label>
+        <label for="admin-password">Password
+          <input id="admin-password" name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <div class="setup-actions">
+          <button class="btn btn-primary" type="submit">Sign in</button>
+          <a class="btn btn-ghost" href="#/">Back to home</a>
+        </div>
+        <p id="admin-login-error" class="login-error" role="alert">${escapeHtml(message || '')}</p>
+      </form>
+      <p class="admin-note">One shared team account. The session is an HttpOnly cookie that
+        expires after eight hours, and call data is only served to a signed-in admin.</p>
+    </section>`;
+}
+
+async function submitAdminLogin(event) {
+  event.preventDefault();
+  if (ADMIN.busy) return;
+  const emailInput = document.getElementById('admin-email');
+  const passwordInput = document.getElementById('admin-password');
+  const errorBox = document.getElementById('admin-login-error');
+  const button = document.querySelector('#admin-login-form button[type="submit"]');
+  const email = emailInput ? emailInput.value.trim() : '';
+  const password = passwordInput ? passwordInput.value : '';
+
+  ADMIN.busy = true;
+  if (errorBox) errorBox.textContent = '';
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Signing in\u2026';
+  }
+  try {
+    const data = await fetchJson(`${VOICE_API}/admin/login`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    ADMIN.checked = true;
+    ADMIN.ok = true;
+    ADMIN.email = data.email || email;
+    applyNavAuth();
+    liveCalls = [];
+    liveCallsState = 'idle';
+    if ((window.location.hash || '#/') === '#/dashboard') route();
+    else window.location.hash = '#/dashboard';
+  } catch (error) {
+    ADMIN.ok = false;
+    applyNavAuth();
+    if (errorBox) errorBox.textContent = error.message;
+  } finally {
+    ADMIN.busy = false;
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Sign in';
+    }
+  }
+}
+
+async function adminLogout() {
+  try {
+    await fetchJson(`${VOICE_API}/admin/logout`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+  } catch {
+    // the session is cleared in this browser even if the request fails
+  }
+  ADMIN.checked = true;
+  ADMIN.ok = false;
+  ADMIN.email = '';
+  liveCalls = [];
+  liveCallsState = 'idle';
+  applyNavAuth();
+  if ((window.location.hash || '#/') === '#/') route();
+  else window.location.hash = '#/';
 }
 
 async function loadLiveCalls(force) {
@@ -1582,23 +1722,21 @@ function homeView() {
 
   <section class="section">
     <div class="section-head">
+      <p class="section-kicker">How it works</p>
+      <h2>How a call flows</h2>
+      <p>Six stages from the caller's sentence to the saved call record.</p>
+    </div>
+    <div class="arch-flow">${arch}</div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
       <p class="section-kicker">Timeline</p>
       <h2>Built in four stages</h2>
       <p>Each stage added one layer: the decision logic, the conversation and
         local voice loop, the business system, then the live voice agent.</p>
     </div>
     <div class="timeline">${timeline}</div>
-    <p style="margin:16px 0 0"><a class="link-arrow" href="#/journey">Read the full build journey</a></p>
-  </section>
-
-  <section class="section">
-    <div class="section-head">
-      <p class="section-kicker">Architecture</p>
-      <h2>How a call flows</h2>
-      <p>Six stages from the caller's sentence to the saved call record.</p>
-    </div>
-    <div class="arch-flow">${arch}</div>
-    <p style="margin:16px 0 0"><a class="link-arrow" href="#/how-it-works">Read the full architecture</a></p>
   </section>
 
   <section class="section">
@@ -1633,13 +1771,12 @@ function homeView() {
   <section class="cta-band">
     <div>
       <h2>Explore the build</h2>
-      <p>The dashboard shows the call log and analytics. The journey page covers
-        each stage, and the testing page lists every suite and the captured results.</p>
+      <p>The dashboard shows the live call log and analytics for the support team.
+        The call log opens any call with its full transcript.</p>
     </div>
     <div class="cta-links">
       <a class="btn btn-primary" href="#/dashboard">Dashboard</a>
-      <a class="btn btn-ghost" href="#/journey">Journey</a>
-      <a class="btn btn-ghost" href="#/testing">Testing</a>
+      <a class="btn btn-ghost" href="#/how-it-works">How it works</a>
     </div>
   </section>`;
 }
@@ -1751,7 +1888,13 @@ function dashboardView() {
           </p>
         </section>
       </div>
-    </div>`;
+    </div>
+
+    <p class="panel-note" style="margin-top:18px">Signed in as
+      ${escapeHtml(ADMIN.email || 'admin')}. Staff pages:
+      <a href="#/journey">build journey</a> &middot;
+      <a href="#/testing">testing</a> &middot;
+      <a href="#/setup">hosted setup</a>.</p>`;
 }
 
 /* ---------- Calls ---------- */
@@ -2423,6 +2566,7 @@ const TITLES = {
   journey: 'Build journey — AI Customer Calling Agent',
   how: 'How it works — AI Customer Calling Agent',
   testing: 'Testing — AI Customer Calling Agent',
+  admin: 'Admin login — AI Customer Calling Agent',
   setup: 'Hosted setup — AI Customer Calling Agent',
 };
 
@@ -2435,10 +2579,35 @@ function setActiveNav(routeName) {
   });
 }
 
-function route() {
+async function route() {
   const hash = (window.location.hash || '#/').replace(/\/$/, '') || '#/';
   const match = hash.match(/^#\/calls\/(\d+)$/);
   const liveMatch = hash.match(/^#\/live\/([0-9a-f-]{36})$/i);
+  const isAdminData = hash === '#/dashboard' || hash === '#/calls' || Boolean(match) || Boolean(liveMatch);
+  const isStaffPage = hash === '#/journey' || hash === '#/testing';
+
+  if (isAdminData || hash === '#/admin') await loadAdminSession(true);
+  else if (!ADMIN.checked) await loadAdminSession();
+
+  if (isStaffPage && !ADMIN.ok) {
+    window.location.hash = '#/';
+    return;
+  }
+
+  if ((isAdminData || hash === '#/admin') && !ADMIN.ok) {
+    main.innerHTML = adminLoginView();
+    setActiveNav('admin');
+    document.title = TITLES.admin;
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    main.focus({ preventScroll: true });
+    return;
+  }
+
+  if (hash === '#/admin') {
+    window.location.hash = '#/dashboard';
+    return;
+  }
+
   let view = 'home';
   let html;
   let title = TITLES.home;
@@ -2509,8 +2678,18 @@ main.addEventListener('click', (event) => {
   loadLiveCalls();
 });
 
+document.addEventListener('submit', (event) => {
+  if (event.target instanceof HTMLFormElement && event.target.id === 'admin-login-form') {
+    submitAdminLogin(event);
+  }
+});
+
 document.addEventListener('click', (event) => {
   if (!(event.target instanceof Element)) return;
+  if (event.target.closest('[data-action="admin-logout"]')) {
+    adminLogout();
+    return;
+  }
   if (event.target.closest('[data-action="talk"]')) {
     startLiveCall();
     return;

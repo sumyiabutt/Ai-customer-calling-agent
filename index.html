@@ -20,11 +20,11 @@
   <a class="brand" href="#/">AI Calling Agent</a>
   <nav aria-label="Main">
     <a href="#/" data-nav="home">Home</a>
-    <a href="#/dashboard" data-nav="dashboard">Dashboard</a>
-    <a href="#/calls" data-nav="calls">Call log</a>
-    <a href="#/journey" data-nav="journey">Journey</a>
     <a href="#/how-it-works" data-nav="how">How it works</a>
-    <a href="#/testing" data-nav="testing">Testing</a>
+    <a href="#/dashboard" data-nav="dashboard" data-admin-only hidden>Dashboard</a>
+    <a href="#/calls" data-nav="calls" data-admin-only hidden>Call log</a>
+    <a href="#/admin" data-nav="admin" data-guest-only>Admin login</a>
+    <button class="nav-link" type="button" data-action="admin-logout" data-admin-only hidden>Sign out</button>
     <button class="nav-call" type="button" data-action="talk">Talk to agent</button>
   </nav>
 </header>
@@ -43,11 +43,8 @@
     <div class="footer-col">
       <h2>Explore</h2>
       <a href="#/">Home</a>
-      <a href="#/dashboard">Dashboard</a>
-      <a href="#/calls">Call log</a>
-      <a href="#/journey">Build journey</a>
       <a href="#/how-it-works">How it works</a>
-      <a href="#/testing">Testing</a>
+      <a href="#/admin">Admin login</a>
       <a href="#/setup">Hosted setup</a>
     </div>
   </div>
