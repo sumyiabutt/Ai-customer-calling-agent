@@ -1,6 +1,7 @@
 'use strict';
 
 const { json, sb, maskSensitive } = require('./_lib');
+const { requireAdmin } = require('./_auth');
 
 const SELECT =
   'id,vapi_call_id,started_at,ended_at,duration_seconds,caller_phone,customer_name,' +
@@ -157,6 +158,8 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'GET') {
     return json(res, 405, { error: 'Method not allowed' });
   }
+
+  if (!requireAdmin(req, res)) return;
 
   const id = (req.query && req.query.id) || '';
   try {

@@ -149,6 +149,19 @@ function assistantConfig(serverUrl, secret) {
     },
     voice: { provider: 'vapi', voiceId: 'Elliot' },
     transcriber: { provider: 'deepgram', model: 'nova-3', language: 'en' },
+    // Interruption: any recognised word from the caller stops the current reply,
+    // and the barge-in window closes quickly so the next sentence is not blocked.
+    stopSpeakingPlan: {
+      numWords: 0,
+      voiceSeconds: 0.2,
+      backoffSeconds: 0.4,
+    },
+    // Start replying after a short pause; smart endpointing decides when the caller
+    // has finished a thought instead of a fixed long wait.
+    startSpeakingPlan: {
+      waitSeconds: 0.4,
+      smartEndpointingPlan: { provider: 'vapi' },
+    },
     serverUrl,
     serverUrlSecret: secret,
     recordingEnabled: false,
