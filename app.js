@@ -5,7 +5,7 @@
  * Live calls come from the Vapi browser agent through the /api functions and
  * are labelled separately. No call audio is stored.
  *
- * Build: 2026-11-12 16:18 UTC.
+ * Build: 2026-11-12 16:24 UTC.
  */
 
 'use strict';
@@ -1720,7 +1720,7 @@ function homeView() {
     <div class="feature-grid">${featureCards}</div>
   </section>
 
-  <div id="how-it-works">${howItWorksSections('How it works')}</div>
+  <div id="how-it-works">${howItWorksSections()}</div>
 
   <section class="section">
     <div class="section-head">
