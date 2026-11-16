@@ -13,8 +13,10 @@ password-protected local dashboard with call logs, transcripts and analytics.
 **No phone line is connected.** A real browser voice agent is now built: Vapi
 handles the microphone, speech recognition, the language model and the spoken
 reply, and every finished web call is saved through the Vercel API to a hosted
-Supabase Postgres database. The live call is not claimed as verified until the
-Vercel environment keys are set and the test calls below are run.
+Supabase Postgres database. The environment keys are set on the deployment and
+the live web call is verified: real browser test calls were made and 25 live
+calls are saved alongside the twelve sample calls, visible after admin sign-in
+on the site.
 
 The earlier Weeks 1–3 prototype still holds the approved order and FAQ data,
 the three-strike escalation rule and the call-log format. Its CRM holds fictional
@@ -22,9 +24,10 @@ sample customers, and the dashboard shows text transcripts only — there are no
 call recordings.
 
 Weeks 1–3 of the four-week plan are delivered and tested (104 automated tests).
-Week 4 work is being added in the order: live web call, language and barge-in,
-authentication and hosted data, appointments, outbound calling, then KPIs and
-reports. See [Live voice agent (Step A)](#live-voice-agent-step-a).
+The live web call, barge-in handling and server-side admin authentication are
+built and verified on the hosted site. Remaining Week 4 work, in order:
+language tuning, appointments, outbound calling, then KPIs and reports.
+See [Live voice agent (Step A)](#live-voice-agent-step-a).
 
 ## Live project website
 
@@ -137,14 +140,16 @@ Captured output: `docs/step_a_api_check.txt`.
 - **No phone number.** Calls are browser web calls only.
 - **English only.** Deepgram is configured for English; Urdu and mixed-language
   speech are Step B and are not claimed as working.
-- **Barge-in is available through Vapi but not tuned or measured yet.** The
-  latency target of about 1.5 seconds will be measured in Step B.
+- **Barge-in is enabled through Vapi** (the customer can interrupt while the
+  assistant is speaking); fine-tuning and latency measurement remain Step B.
 - **No identity check yet.** Order status uses sample orders and exposes no
   personal details; the order-ID-plus-name check is Step B.
 - **Prompt-injection resistance is written into the system prompt but not tested**
   with adversarial calls yet; that test is Step F.
-- **The live-call API is public** for Step A. Server-side login with `admin` and
-  `viewer` roles is Step C; until then, do not put real customer data in it.
+- **Admin login protects the live-call data.** The dashboard and the call
+  APIs require the configured admin sign-in (pages and APIs both reject
+  guests); a read-only `viewer` role remains a possible later addition. The
+  order and FAQ samples are fictional either way.
 - **No audio is stored.** Only transcript and summary are saved, and card/CNIC
   patterns are masked before saving.
 - **No appointments or outbound calling yet.** Steps D and E add them.
@@ -232,7 +237,7 @@ working; the customer data is not.
 | Real CRM or client API integration | **Not done** — needs client API access; the local schema is a stand-in |
 | Outbound calling campaigns, calendar booking and identity verification | **Not done** — the delivered MVP is inbound-only; these plan items need telephony, client systems and approved policy |
 | Week 3 Word report | Done — `WEEK3_DEVELOPMENT_DOCUMENT.docx` (same theme as Weeks 1 and 2) |
-| Hosted project website | Done — `web/`, public on Vercel, seven views, no sign-in, fictional data |
+| Hosted project website | Done — `web/`, public on Vercel; dashboard and call log behind admin sign-in, fictional data |
 | Tests and README updated for Week 3 | Done — 104 tests, 0 failures |
 
 The database files live in `data/` and are ignored by git. Delete them to start
@@ -580,18 +585,20 @@ the live agent at a real business.
 ## Limitations
 
 - No phone number is connected. The live agent runs as a browser web call only.
-- The live call is built but **not yet verified**: it needs the Vercel
-  environment keys and the three test calls listed in the delivery checklist.
+- The live web call is **verified** with the hosted keys: real browser test
+  calls were made and each appears in the dashboard with transcript and
+  outcome. A first call over a real phone line is still not possible because
+  no telephony account or number is available.
 - Deepgram is configured for English. Urdu and mixed Urdu-English speech are
   Step B and are not claimed as working.
-- Vapi supports barge-in on the web call, but it has not been tuned or measured
+- Barge-in is enabled on the web call, but it has not been tuned or measured
   against the 1.5-second response target yet.
 - The old Python prototype still uses keyword rules; the live agent uses an LLM
   with the same approved tools and data.
 - Orders and FAQs in Supabase are the same samples as the local CRM. No client
   CRM/API is connected.
-- The live-call API has no sign-in yet, so it must not hold real customer data.
-  Server-side `admin`/`viewer` login is Step C.
+- The live-call API is protected by admin sign-in, but it must not hold real
+  customer data anyway: the orders and FAQs are the fictional samples.
 - There are no call recordings or audio playback, by choice: only transcripts
   and summaries are stored.
 - Appointments, outbound calling and the Do-Not-Call list are not built yet
@@ -599,14 +606,15 @@ the live agent at a real business.
 
 ## Next steps (Week 4)
 
-1. **Step A — live web call (built, awaiting verification).** Add the Vercel
-   environment keys, run `/api/setup`, then make three real test calls: order
-   status, FAQ or business hours, and an escalation. Confirm each appears in the
-   dashboard with transcript and outcome.
+1. **Step A — live web call: done.** The environment keys are set, `/api/setup`
+   created the assistant, and real browser test calls (order status, FAQ /
+   business hours, and an escalation) were made; each appears in the dashboard
+   with transcript and outcome.
 2. **Step B — language and barge-in.** Enable Urdu and mixed-language speech,
    tune interruption handling, and measure response delay against 1.5 seconds.
-3. **Step C — authentication and hosted data.** Add server-side login with
-   `admin` and `viewer` roles and protect the live-call API.
+3. **Step C — authentication and hosted data: done.** Admin sign-in protects
+   the dashboard and the live-call APIs; a read-only `viewer` role remains a
+   possible later addition.
 4. **Step D — appointments.** Add the appointments table and book, reschedule
    and cancel tools.
 5. **Step E — outbound calling.** CSV contacts, calling hours, retries and the
