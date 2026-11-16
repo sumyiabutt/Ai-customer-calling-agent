@@ -5,7 +5,7 @@
  * Live calls come from the Vapi browser agent through the /api functions and
  * are labelled separately. No call audio is stored.
  *
- * Build: 2026-11-12 18:00 UTC.
+ * Build: 2026-11-16 15:50 UTC.
  */
 
 'use strict';
@@ -1762,7 +1762,7 @@ function homeView() {
   <section class="stat-band" aria-label="Project at a glance">
     <div class="stat"><span class="stat-value">${TOTAL_TESTS}</span><span class="stat-label">Automated tests passing</span></div>
     <div class="stat"><span class="stat-value">8</span><span class="stat-label">Supported intents</span></div>
-    <div class="stat"><span class="stat-value">12</span><span class="stat-label">Calls in the log</span></div>
+    <div class="stat"><span class="stat-value">37</span><span class="stat-label">Calls in the log (12 sample + 25 live)</span></div>
     <div class="stat"><span class="stat-value">4</span><span class="stat-label">Build stages delivered</span></div>
   </section>
 
@@ -1824,6 +1824,7 @@ function homeView() {
           <li>Vapi browser voice call wired to the approved-data tools</li>
           <li>Hosted call log wired to the dashboard, labelled separately from sample data</li>
           <li>Admin dashboard with sample calls, transcript view and analytics</li>
+          <li>Admin login protecting the dashboard and live-call APIs</li>
           <li>104 automated tests and 23 offline API checks</li>
         </ul>
       </div>
@@ -1834,7 +1835,7 @@ function homeView() {
           <li>Urdu and mixed Urdu-English speech</li>
           <li>Client CRM or order API (sample orders stand in)</li>
           <li>Call recordings, audio storage and playback (not stored by design)</li>
-          <li>Production login with admin and viewer roles</li>
+          <li>Viewer role alongside the admin login</li>
           <li>Outbound calling, calling hours and a Do-Not-Call list</li>
         </ul>
       </div>
