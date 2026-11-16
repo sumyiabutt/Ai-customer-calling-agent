@@ -1,5 +1,9 @@
 # AI Customer Calling Agent
 
+**Live demo:** <https://shopeasy-customer-care-git-main-sumyiabutt.vercel.app/> —
+open the site and press **Talk to the agent** to start a real browser voice call.
+The dashboard and call log open after admin sign-in at `/admin`.
+
 A working prototype of the customer-support calling agent described in
 `AI_Customer_Calling_Agent_Development_Plan.docx`. Week 1 delivers the decision
 layer of the agent: it understands the customer's request, looks up approved
@@ -49,9 +53,7 @@ build, deployed on Vercel from GitHub `main`. No Vercel login is required.
 Admin credentials are created from the site itself: the admin form is guarded
 by `SETUP_TOKEN`, stores a scrypt password hash plus a fresh session secret,
 and signs in with an HMAC-signed, HttpOnly, SameSite=Strict cookie (8 hour
-expiry, 8 attempts per 10 minutes throttle). The verified link keeps tracking
-`main`; the previous project at <https://563d3cc2.vercel.app/> serves the same
-build and data.
+expiry, 8 attempts per 10 minutes throttle).
 
 ---
 
