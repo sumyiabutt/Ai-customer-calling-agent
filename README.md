@@ -28,29 +28,27 @@ reports. See [Live voice agent (Step A)](#live-voice-agent-step-a).
 
 ## Live project website
 
-<https://ai-customer-calling-agent.vercel.app/> — a public, read-only copy of
-the project website. No sign-in is required.
+<https://shopeasy-customer-care-git-main-sumyiabutt.vercel.app/> — the live
+build, deployed on Vercel from GitHub `main`. No Vercel login is required.
 
-The site presents the whole Weeks 1–3 build across seven views (labelled
-Stage 1–3 on the site):
+- **Home** — what the agent does, how a call flows, and a browser voice demo
+  that needs no keys.
+- **Talk to the agent (integration)** — starts a real browser call with a
+  microphone. Vapi (Deepgram speech recognition, OpenAI model, text-to-speech)
+  runs the call and calls the backend tools; when the call ends, the
+  transcript, summary, duration and outcome are saved to the hosted Supabase
+  database and appear in the dashboard.
+- **Dashboard and Call log (demo)** — sign in at `/admin` with the configured
+  admin email and password. Live web calls and the twelve sample calls are
+  listed with outcome and full transcript; guests are rejected with a 401 by
+  the call APIs, so the demo pages and the data behind them are protected.
 
-- **Home** — what the agent does, how a call flows, and what works versus what
-  still needs external access.
-- **Dashboard** — total calls, escalation rate, average turns, outcomes, intents
-  and calls per day, calculated from the sample call log.
-- **Call log** and **call detail** — 12 sample calls with outcomes, customer
-  links and full text transcripts.
-- **Journey** — what each stage delivered, how it was tested, the access still
-  missing and the next steps.
-- **How it works** — the eight intents, escalation and handoff logic, the data
-  model and the dashboard's security measures.
-- **Testing** — seven suites, 104 tests, captured evidence and the three weekly
-  reports as DOCX downloads.
-
-All customer names, orders and sample calls are fictional; call #1 reproduces
-the captured Week 3 demo run. Live web calls are shown separately and labelled
-**Live call**. With no Vapi or Supabase keys in the hosting environment, the
-live panel says so and the rest of the site keeps working from sample data.
+Admin credentials are created from the site itself: the admin form is guarded
+by `SETUP_TOKEN`, stores a scrypt password hash plus a fresh session secret,
+and signs in with an HMAC-signed, HttpOnly, SameSite=Strict cookie (8 hour
+expiry, 8 attempts per 10 minutes throttle). The verified link keeps tracking
+`main`; the previous project at <https://563d3cc2.vercel.app/> serves the same
+build and data.
 
 ---
 
@@ -101,12 +99,12 @@ appear in the dashboard.
    repository root as a flat site: `index.html`, `styles.css` and `app.js` at the
    top level, with the functions in `api/`. Upload the changed files to `main`
    (or drop `vercel-upload.zip` on the project) and Vercel rebuilds
-   `https://ai-customer-calling-agent.vercel.app/`.
+   `https://shopeasy-customer-care-git-main-sumyiabutt.vercel.app/`.
 
 5. **Create the assistant once** after the first deployment:
 
    ```bash
-   curl -X POST https://ai-customer-calling-agent.vercel.app/api/setup \
+   curl -X POST https://shopeasy-customer-care-git-main-sumyiabutt.vercel.app/api/setup \
      -H "x-setup-token: YOUR_SETUP_TOKEN"
    ```
 
@@ -422,14 +420,14 @@ python -m http.server 8090 --bind 127.0.0.1 --directory web
 
 A static server shows every page, but the live panel reports that the API is not
 available because those functions run on Vercel. Published copy:
-<https://ai-customer-calling-agent.vercel.app/>. Live calls are labelled
+<https://shopeasy-customer-care-git-main-sumyiabutt.vercel.app/>. Live calls are labelled
 **Live call**; the twelve older records are labelled **Sample data**. There is no
 telephony, and no audio is stored. Local checks are recorded in
 `docs/week3_deploy_check.txt`.
 
 ### Deploy the website on Vercel
 
-The Vercel project `ai-customer-calling-agent` is connected to GitHub `main` and
+The Vercel project `shopeasy-customer-care` is connected to GitHub `main` and
 serves the **repository root** as a flat static site: `index.html`,
 `styles.css` and `app.js` at the top level, with the functions in `api/`.
 
